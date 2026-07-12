@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Eye } from "lucide-react";
 import Badge from "../../components/ui/Badge";
+import { Input } from "../../components/ui/Input";
 import EmptyState from "../../components/ui/EmptyState";
 import Pagination from "../../components/admin/Pagination";
 import { getAdminOrders } from "../../lib/adminOrders";
@@ -33,38 +34,51 @@ export default function AdminOrderList() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => setPage(1), [status]);
+  useEffect(() => setPage(1), [status, search]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getAdminOrders({ page, pageSize: 10, status })
-      .then((res) => {
-        if (cancelled) return;
-        setOrders(res.items);
-        setTotal(res.total);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setOrders([]);
-          setTotal(0);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+    // Small debounce on search so every keystroke doesn't fire a request.
+    const t = setTimeout(() => {
+      getAdminOrders({ page, pageSize: 10, status, search })
+        .then((res) => {
+          if (cancelled) return;
+          setOrders(res.items);
+          setTotal(res.total);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setOrders([]);
+            setTotal(0);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 300);
+
     return () => {
       cancelled = true;
+      clearTimeout(t);
     };
-  }, [page, status]);
+  }, [page, status, search]);
 
   return (
     <div>
       <h1 className="font-display text-2xl text-ivory">Orders</h1>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by order ID, name, or phone..."
+          className="max-w-xs"
+        />
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
@@ -96,7 +110,7 @@ export default function AdminOrderList() {
             ) : orders.length === 0 ? (
               <tr>
                 <td colSpan={6}>
-                  <EmptyState title="No orders found" description="Try a different status filter." />
+                  <EmptyState title="No orders found" description="Try a different search or status filter." />
                 </td>
               </tr>
             ) : (

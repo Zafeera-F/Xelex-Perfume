@@ -48,6 +48,12 @@ enum AdminRole {
   STAFF
 }
 
+enum PaymentIntentStatus {
+  CREATED
+  PAID
+  FAILED
+}
+
 // -----------------------------------------------------------------------------
 // USERS
 // -----------------------------------------------------------------------------
@@ -70,6 +76,7 @@ model User {
   wishlist      Wishlist[]
   orders        Order[]
   reviews       Review[]
+  paymentIntents PaymentIntent[]
 
   @@index([email])
   @@map("users")
@@ -338,6 +345,29 @@ model Payment {
 
   @@index([status])
   @@map("payments")
+}
+
+// Bridges the gap between "customer clicked pay" and "gateway confirmed" —
+// Order/Payment can't exist yet at this point (Payment.orderId is required),
+// so this is where the cart/shipping snapshot and gateway order id live
+// until verification succeeds and a real Order gets built from it.
+model PaymentIntent {
+  id             String              @id @default(uuid()) @db.Uuid
+  userId         String              @db.Uuid
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gatewayOrderId String              @unique // Razorpay order_id
+  amount         Decimal             @db.Decimal(10, 2)
+  status         PaymentIntentStatus @default(CREATED)
+  cartSnapshot   Json                // { items: [{productId, quantity}], shipping: {...} }
+  transactionId  String?             // Razorpay payment_id, set once captured
+  failureReason  String?
+  orderId        String?             @unique @db.Uuid // set once the real Order is created, for traceability
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("payment_intents")
 }
 
 // -----------------------------------------------------------------------------

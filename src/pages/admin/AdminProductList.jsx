@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Pencil, Trash2, ImageOff } from "lucide-react";
+import { Plus, Pencil, Trash2, ImageOff, Eye, EyeOff } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import { Input } from "../../components/ui/Input";
 import EmptyState from "../../components/ui/EmptyState";
 import Pagination from "../../components/admin/Pagination";
-import { getAdminProducts, deleteProduct } from "../../lib/adminProducts";
+import { getAdminProducts, deleteProduct, updateProduct } from "../../lib/adminProducts";
 import { PATHS } from "../../routes/paths";
 
 const STATUS_OPTIONS = [
@@ -60,6 +60,11 @@ export default function AdminProductList() {
     await deleteProduct(product.id);
     setProducts((prev) => prev.filter((p) => p.id !== product.id));
     setTotal((prev) => prev - 1);
+  }
+
+  async function handleToggleActive(product) {
+    const updated = await updateProduct(product.id, { isActive: !product.isActive });
+    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, isActive: updated.isActive } : p)));
   }
 
   return (
@@ -133,7 +138,14 @@ export default function AdminProductList() {
                   </td>
                   <td className="px-4 py-3 text-ivory/80">{product.category || "—"}</td>
                   <td className="px-4 py-3 text-gold">₹{product.price.toLocaleString("en-IN")}</td>
-                  <td className="px-4 py-3 text-ivory/80">{product.stockQuantity}</td>
+                  <td className="px-4 py-3 text-ivory/80">
+                    <div className="flex items-center gap-2">
+                      <span>{product.stockQuantity}</span>
+                      {product.stockQuantity > 0 && product.stockQuantity < 10 && (
+                        <Badge tone="gold">Low Stock</Badge>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     {product.deletedAt ? (
                       <Badge tone="muted">Deleted</Badge>
@@ -152,6 +164,15 @@ export default function AdminProductList() {
                       >
                         <Pencil size={15} />
                       </Link>
+                      {!product.deletedAt && (
+                        <button
+                          onClick={() => handleToggleActive(product)}
+                          aria-label={product.isActive ? `Disable ${product.name}` : `Enable ${product.name}`}
+                          className="text-ivory/60 transition-colors hover:text-gold"
+                        >
+                          {product.isActive ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      )}
                       {!product.deletedAt && (
                         <button
                           onClick={() => handleDelete(product)}

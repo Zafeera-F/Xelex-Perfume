@@ -1,12 +1,14 @@
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Package, ClipboardList, Star, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, ClipboardList, Users, Star, LogOut } from "lucide-react";
 import Logo from "../components/ui/Logo";
 import { useAdminAuth } from "../context/AdminAuthContext";
 import { PATHS } from "../routes/paths";
 
 const NAV_LINKS = [
+  { label: "Dashboard", to: PATHS.admin.dashboard, icon: LayoutDashboard },
   { label: "Products", to: PATHS.admin.products, icon: Package },
   { label: "Orders", to: PATHS.admin.orders, icon: ClipboardList },
+  { label: "Customers", to: PATHS.admin.customers, icon: Users },
   { label: "Reviews", to: PATHS.admin.reviews, icon: Star },
 ];
 

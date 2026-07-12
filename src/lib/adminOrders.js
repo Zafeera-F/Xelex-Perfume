@@ -2,9 +2,10 @@
 
 import { apiRequest } from "./api";
 
-export function getAdminOrders({ page = 1, pageSize = 10, status } = {}) {
+export function getAdminOrders({ page = 1, pageSize = 10, status, search } = {}) {
   const params = new URLSearchParams({ page, pageSize });
   if (status) params.set("status", status);
+  if (search) params.set("search", search);
   return apiRequest(`/api/admin/orders?${params.toString()}`);
 }
 

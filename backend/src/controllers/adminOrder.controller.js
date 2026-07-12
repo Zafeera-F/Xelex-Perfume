@@ -6,11 +6,12 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const listOrders = asyncHandler(async (req, res) => {
-  const { page, pageSize, status } = req.query;
+  const { page, pageSize, status, search } = req.query;
   const result = await adminOrderService.list({
     page: Number(page) || 1,
     pageSize: Number(pageSize) || 10,
     status,
+    search,
   });
   res.status(200).json(new ApiResponse("Orders fetched successfully", result));
 });

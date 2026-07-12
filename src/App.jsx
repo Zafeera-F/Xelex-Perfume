@@ -16,10 +16,13 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 
 import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProductList from "./pages/admin/AdminProductList";
 import AdminProductForm from "./pages/admin/AdminProductForm";
 import AdminOrderList from "./pages/admin/AdminOrderList";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
+import AdminCustomerList from "./pages/admin/AdminCustomerList";
+import AdminCustomerDetail from "./pages/admin/AdminCustomerDetail";
 import AdminReviewList from "./pages/admin/AdminReviewList";
 
 function App() {
@@ -44,12 +47,15 @@ function App() {
       <Route path={PATHS.admin.login} element={<AdminLogin />} />
 
       <Route path={PATHS.admin.root} element={<AdminLayout />}>
-        <Route index element={<Navigate to={PATHS.admin.products} replace />} />
+        <Route index element={<Navigate to={PATHS.admin.dashboard} replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="products" element={<AdminProductList />} />
         <Route path="products/new" element={<AdminProductForm />} />
         <Route path="products/:id/edit" element={<AdminProductForm />} />
         <Route path="orders" element={<AdminOrderList />} />
         <Route path="orders/:id" element={<AdminOrderDetail />} />
+        <Route path="customers" element={<AdminCustomerList />} />
+        <Route path="customers/:id" element={<AdminCustomerDetail />} />
         <Route path="reviews" element={<AdminReviewList />} />
       </Route>
     </Routes>

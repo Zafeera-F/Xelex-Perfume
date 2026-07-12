@@ -46,8 +46,17 @@ export const orderRepository = {
 
   // --- Admin-facing methods (every order, not just one user's) ----------
 
-  async findAllForAdmin({ page = 1, pageSize = 10, status } = {}) {
-    const where = status ? { status } : {};
+  async findAllForAdmin({ page = 1, pageSize = 10, status, search } = {}) {
+    const where = {
+      ...(status && { status }),
+      ...(search && {
+        OR: [
+          { orderNumber: { contains: search, mode: "insensitive" } },
+          { user: { fullName: { contains: search, mode: "insensitive" } } },
+          { user: { phone: { contains: search, mode: "insensitive" } } },
+        ],
+      }),
+    };
 
     const [rows, total] = await Promise.all([
       prisma.order.findMany({
@@ -93,7 +102,16 @@ export const orderRepository = {
     });
   },
 
-  updateStatus(id, status) {
-    return prisma.order.update({ where: { id }, data: { status } });
+  // Optional `client` param lets adminOrder.service.js call this inside a
+  // transaction (see restoreStockForOrder there) — defaults to the
+  // singleton so every existing call site is unaffected.
+  updateStatus(id, status, client = prisma) {
+    return client.order.update({ where: { id }, data: { status } });
+  },
+
+  // Generic count, used by the admin dashboard — no filter for "Total
+  // Orders", a status filter for "Pending"/"Delivered".
+  count({ status } = {}) {
+    return prisma.order.count({ where: status ? { status } : {} });
   },
 };

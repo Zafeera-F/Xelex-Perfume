@@ -10,6 +10,7 @@ import PaymentMethodSelector from "../components/checkout/PaymentMethodSelector"
 import OrderConfirmation from "../components/checkout/OrderConfirmation";
 import { fadeInUp } from "../lib/animations";
 import { createOrder } from "../lib/orders";
+import { initiateRazorpayCheckout, verifyRazorpayPayment, loadRazorpayCheckoutScript } from "../lib/payments";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { PATHS } from "../routes/paths";
@@ -68,25 +69,91 @@ export default function Checkout() {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
+
+    const items = lines.map((line) => ({ productId: line.id, quantity: line.quantity }));
+    const shippingPayload = {
+      fullName: shipping.fullName,
+      phone: shipping.phone,
+      addressLine1: shipping.address1,
+      addressLine2: shipping.address2,
+      city: shipping.city,
+      state: shipping.state,
+      pincode: shipping.pincode,
+    };
+
+    if (paymentMethod === "cod") {
+      // Unchanged from before Razorpay was wired in — COD has no
+      // "payment" to verify, so the order is created immediately.
+      try {
+        const order = await createOrder({ items, shipping: shippingPayload, paymentMethod: "COD" });
+        setPlacedOrder(order);
+        clearCart();
+      } catch (err) {
+        setError(err.message || "Unable to place your order. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // UPI via Razorpay — the order is deliberately NOT created here. It's
+    // only ever built server-side after a verified payment (see
+    // handleRazorpaySuccess below), so a failed or cancelled payment never
+    // leaves a phantom order behind and never touches the cart.
     try {
-      const order = await createOrder({
-        items: lines.map((line) => ({ productId: line.id, quantity: line.quantity })),
-        shipping: {
-          fullName: shipping.fullName,
-          phone: shipping.phone,
-          addressLine1: shipping.address1,
-          addressLine2: shipping.address2,
-          city: shipping.city,
-          state: shipping.state,
-          pincode: shipping.pincode,
+      const { razorpayOrderId, amount, currency, keyId } = await initiateRazorpayCheckout({
+        items,
+        shipping: shippingPayload,
+      });
+      await loadRazorpayCheckoutScript();
+
+      const rzp = new window.Razorpay({
+        key: keyId,
+        amount,
+        currency,
+        order_id: razorpayOrderId,
+        name: "XeleX Perfumes",
+        description: "Order payment",
+        prefill: {
+          name: shippingPayload.fullName,
+          contact: shippingPayload.phone,
         },
-        paymentMethod: paymentMethod.toUpperCase(),
+        theme: { color: "#d4af37" },
+        handler: (response) => handleRazorpaySuccess(response),
+        modal: {
+          ondismiss: () => {
+            setError("Payment was cancelled. Your cart is still saved — you can try again anytime.");
+            setIsSubmitting(false);
+          },
+        },
       });
 
+      rzp.on("payment.failed", () => {
+        setError("Payment failed. Your cart is still saved — please try again.");
+        setIsSubmitting(false);
+      });
+
+      rzp.open();
+      // Intentionally no setIsSubmitting(false) here — the widget is now
+      // open and the button should stay disabled until the customer
+      // succeeds, fails, or cancels (all handled above/below).
+    } catch (err) {
+      setError(err.message || "Unable to start payment. Please try again.");
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleRazorpaySuccess(response) {
+    try {
+      const order = await verifyRazorpayPayment({
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_signature: response.razorpay_signature,
+      });
       setPlacedOrder(order);
       clearCart();
     } catch (err) {
-      setError(err.message || "Unable to place your order. Please try again.");
+      setError(err.message || "Payment verification failed. Please contact support if you were charged.");
     } finally {
       setIsSubmitting(false);
     }

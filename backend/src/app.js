@@ -46,8 +46,19 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(cookieParser());
 
 // Body parsers — JSON for API requests, urlencoded for traditional form
-// submissions (e.g. a future admin panel or webhook payloads).
-app.use(express.json());
+// submissions. The `verify` callback stashes the exact raw request bytes
+// onto `req.rawBody` — the Razorpay webhook handler needs those (not the
+// parsed object) to verify `X-Razorpay-Signature`, since a signature is
+// computed over the literal bytes sent, not a re-serialized JSON.stringify
+// of them. Every other route is unaffected; `req.body` still works exactly
+// as before everywhere.
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 
 // Serves admin-uploaded product images. `Cross-Origin-Resource-Policy` is

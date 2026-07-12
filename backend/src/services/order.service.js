@@ -5,6 +5,11 @@
 // and a failure partway through (a stock shortfall, an order-number
 // collision) must roll back everything rather than leave a half-written
 // order behind.
+//
+// `buildOrderInTransaction` is exported so payment.service.js (Razorpay
+// UPI flow) can build an order from an already-verified payment using the
+// exact same stock/pricing/order-number logic as the COD path below,
+// rather than a second copy that could drift out of sync with this one.
 
 import prisma from "../config/prisma.js";
 import { orderRepository } from "../repositories/order.repository.js";
@@ -27,77 +32,93 @@ function generateOrderNumber(sequence) {
   return `XV-${y}${m}${d}-${String(sequence).padStart(4, "0")}`;
 }
 
+// Builds one Order (+ OrderItems + Payment, and decrements stock) inside an
+// already-open transaction. Caller owns the transaction and any
+// retry-on-P2002 loop (see `createOrder` below and payment.service.js's
+// finalize logic) — this function just does the work once per call.
+//
+// `paymentStatus`/`transactionId`/`paidAt` let a caller record a payment
+// that's already been verified (UPI, via Razorpay) instead of the COD
+// default of "collected on delivery, still PENDING".
+export async function buildOrderInTransaction(
+  tx,
+  userId,
+  { items, shipping, paymentMethod, paymentStatus = "PENDING", transactionId = null, paidAt = null }
+) {
+  // Re-fetch every line server-side — price and availability are never
+  // trusted from the client cart.
+  //
+  // Note: this is a plain read-then-update, not a `SELECT ... FOR UPDATE`
+  // row lock, so there's a narrow race window under high concurrent load
+  // on the same SKU where two simultaneous orders could both pass this
+  // check. Acceptable for this catalog's scale today; revisit with row
+  // locking if order volume grows.
+  const lines = [];
+  for (const { productId, quantity } of items) {
+    const product = await productRepository.findBySlug(productId, tx);
+    if (!product) {
+      throw new ApiError(404, `Product no longer available: ${productId}`);
+    }
+    if (product.stockQuantity < quantity) {
+      throw new ApiError(
+        409,
+        `${product.name} doesn't have enough stock (only ${product.stockQuantity} left)`
+      );
+    }
+    lines.push({ product, quantity });
+  }
+
+  const subtotal = lines.reduce(
+    (sum, { product, quantity }) => sum + Number(product.price) * quantity,
+    0
+  );
+  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
+  const total = subtotal + shippingFee;
+
+  const address = await addressRepository.create({ userId, ...shipping }, tx);
+
+  const sequence = (await orderRepository.countCreatedToday(tx)) + 1;
+  const orderNumber = generateOrderNumber(sequence);
+
+  const order = await orderRepository.create(
+    {
+      orderNumber,
+      userId,
+      addressId: address.id,
+      subtotal,
+      shippingFee,
+      total,
+      paymentMethod,
+      items: {
+        create: lines.map(({ product, quantity }) => ({
+          productId: product.id,
+          productName: product.name,
+          unitPrice: product.price,
+          quantity,
+          lineTotal: Number(product.price) * quantity,
+        })),
+      },
+      payment: {
+        create: { method: paymentMethod, amount: total, status: paymentStatus, transactionId, paidAt },
+      },
+    },
+    tx
+  );
+
+  for (const { product, quantity } of lines) {
+    await productRepository.decrementStock(product.id, quantity, tx);
+  }
+
+  return order;
+}
+
 export const orderService = {
   async createOrder(userId, { items, shipping, paymentMethod }) {
     for (let attempt = 1; attempt <= MAX_ORDER_NUMBER_ATTEMPTS; attempt++) {
       try {
-        return await prisma.$transaction(async (tx) => {
-          // Re-fetch every line server-side — price and availability are
-          // never trusted from the client cart.
-          //
-          // Note: this is a plain read-then-update, not a `SELECT ... FOR
-          // UPDATE` row lock, so there's a narrow race window under high
-          // concurrent load on the same SKU where two simultaneous orders
-          // could both pass this check. Acceptable for this catalog's
-          // scale today; revisit with row locking if order volume grows.
-          const lines = [];
-          for (const { productId, quantity } of items) {
-            const product = await productRepository.findBySlug(productId, tx);
-            if (!product) {
-              throw new ApiError(404, `Product no longer available: ${productId}`);
-            }
-            if (product.stockQuantity < quantity) {
-              throw new ApiError(
-                409,
-                `${product.name} doesn't have enough stock (only ${product.stockQuantity} left)`
-              );
-            }
-            lines.push({ product, quantity });
-          }
-
-          const subtotal = lines.reduce(
-            (sum, { product, quantity }) => sum + Number(product.price) * quantity,
-            0
-          );
-          const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
-          const total = subtotal + shippingFee;
-
-          const address = await addressRepository.create({ userId, ...shipping }, tx);
-
-          const sequence = (await orderRepository.countCreatedToday(tx)) + 1;
-          const orderNumber = generateOrderNumber(sequence);
-
-          const order = await orderRepository.create(
-            {
-              orderNumber,
-              userId,
-              addressId: address.id,
-              subtotal,
-              shippingFee,
-              total,
-              paymentMethod,
-              items: {
-                create: lines.map(({ product, quantity }) => ({
-                  productId: product.id,
-                  productName: product.name,
-                  unitPrice: product.price,
-                  quantity,
-                  lineTotal: Number(product.price) * quantity,
-                })),
-              },
-              payment: {
-                create: { method: paymentMethod, amount: total },
-              },
-            },
-            tx
-          );
-
-          for (const { product, quantity } of lines) {
-            await productRepository.decrementStock(product.id, quantity, tx);
-          }
-
-          return order;
-        });
+        return await prisma.$transaction((tx) =>
+          buildOrderInTransaction(tx, userId, { items, shipping, paymentMethod })
+        );
       } catch (err) {
         // Same-day orderNumber collision — recompute the sequence and
         // retry, same race-handling posture as auth.service.js's P2002

@@ -4,9 +4,31 @@
 // (the validator only checks it's a real enum member) — this is admin
 // discretion, not a workflow engine.
 
+import prisma from "../config/prisma.js";
 import { orderRepository } from "../repositories/order.repository.js";
 import { paymentRepository } from "../repositories/payment.repository.js";
+import { productRepository } from "../repositories/product.repository.js";
 import { ApiError } from "../utils/ApiError.js";
+
+// An order's stock is "freed" — eligible to go back into sellable
+// inventory — once it's cancelled/returned, or its payment is refunded.
+// Because status/payment updates have no state-machine guard (see above),
+// this is evaluated as a combined before/after check in updateStatus and
+// updatePayment rather than a per-field transition, so restoring stock via
+// one endpoint can never be double-triggered by the other.
+function stockIsFreed({ status, paymentStatus }) {
+  return status === "CANCELLED" || status === "RETURNED" || paymentStatus === "REFUNDED";
+}
+
+// Puts back the stock an order reserved at placement time. Called once,
+// the first time an order crosses into a stock-is-freed state — must run
+// inside the same transaction as the status/payment write so a crash
+// between the two can never leave stock out of sync with the order record.
+async function restoreStockForOrder(order, tx) {
+  for (const item of order.items) {
+    await productRepository.incrementStock(item.productId, item.quantity, tx);
+  }
+}
 
 function toAdminDetail(order) {
   return {
@@ -53,8 +75,8 @@ function toAdminDetail(order) {
 }
 
 export const adminOrderService = {
-  async list({ page = 1, pageSize = 10, status } = {}) {
-    const { items, total } = await orderRepository.findAllForAdmin({ page, pageSize, status });
+  async list({ page = 1, pageSize = 10, status, search } = {}) {
+    const { items, total } = await orderRepository.findAllForAdmin({ page, pageSize, status, search });
     return {
       items: items.map((order) => ({ ...order, total: Number(order.total) })),
       total,
@@ -76,7 +98,17 @@ export const adminOrderService = {
     if (!existing) {
       throw new ApiError(404, "Order not found");
     }
-    await orderRepository.updateStatus(id, status);
+
+    const wasFreed = stockIsFreed({ status: existing.status, paymentStatus: existing.payment?.status });
+    const willBeFreed = stockIsFreed({ status, paymentStatus: existing.payment?.status });
+
+    await prisma.$transaction(async (tx) => {
+      await orderRepository.updateStatus(id, status, tx);
+      if (!wasFreed && willBeFreed) {
+        await restoreStockForOrder(existing, tx);
+      }
+    });
+
     return this.getById(id);
   },
 
@@ -89,10 +121,22 @@ export const adminOrderService = {
       throw new ApiError(404, "This order has no payment record");
     }
 
-    await paymentRepository.updateByOrderId(id, {
-      status,
-      ...(transactionId && { transactionId }),
-      ...(status === "SUCCESS" && { paidAt: new Date() }),
+    const wasFreed = stockIsFreed({ status: existing.status, paymentStatus: existing.payment.status });
+    const willBeFreed = stockIsFreed({ status: existing.status, paymentStatus: status });
+
+    await prisma.$transaction(async (tx) => {
+      await paymentRepository.updateByOrderId(
+        id,
+        {
+          status,
+          ...(transactionId && { transactionId }),
+          ...(status === "SUCCESS" && { paidAt: new Date() }),
+        },
+        tx
+      );
+      if (!wasFreed && willBeFreed) {
+        await restoreStockForOrder(existing, tx);
+      }
     });
 
     return this.getById(id);

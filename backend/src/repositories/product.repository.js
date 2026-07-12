@@ -44,6 +44,15 @@ export const productRepository = {
     });
   },
 
+  // Used by adminOrder.service.js when an order's stock is freed back up
+  // (cancelled/returned/refunded) — see restoreStockForOrder there.
+  incrementStock(id, quantity, client = prisma) {
+    return client.product.update({
+      where: { id },
+      data: { stockQuantity: { increment: quantity } },
+    });
+  },
+
   async getDistinctLines() {
     const rows = await prisma.product.findMany({
       where: { ...CUSTOMER_VISIBLE, brandLine: { not: null } },
@@ -90,6 +99,20 @@ export const productRepository = {
 
   findByIdForAdmin(id) {
     return prisma.product.findUnique({ where: { id }, include: PRODUCT_INCLUDE });
+  },
+
+  // Used by the admin dashboard's "Total Products" stat.
+  count() {
+    return prisma.product.count({ where: { deletedAt: null } });
+  },
+
+  // Used by the admin dashboard's "Low Stock Products" stat. Excludes 0
+  // (out-of-stock is already surfaced separately via inStock/isActive) —
+  // this is specifically the "still sellable but running low" signal.
+  countLowStock() {
+    return prisma.product.count({
+      where: { deletedAt: null, stockQuantity: { gt: 0, lt: 10 } },
+    });
   },
 
   create(data) {

@@ -19,6 +19,9 @@ import adminOrderRoutes from "./adminOrder.routes.js";
 import uploadRoutes from "./upload.routes.js";
 import wishlistRoutes from "./wishlist.routes.js";
 import adminReviewRoutes from "./adminReview.routes.js";
+import paymentRoutes from "./payment.routes.js";
+import adminDashboardRoutes from "./adminDashboard.routes.js";
+import adminCustomerRoutes from "./adminCustomer.routes.js";
 
 const router = Router();
 
@@ -40,5 +43,8 @@ router.use("/api/admin/orders", adminOrderRoutes);
 router.use("/api/admin/uploads", uploadRoutes);
 router.use("/api/wishlist", wishlistRoutes);
 router.use("/api/admin/reviews", adminReviewRoutes);
+router.use("/api/payments/razorpay", paymentRoutes);
+router.use("/api/admin/dashboard", adminDashboardRoutes);
+router.use("/api/admin/customers", adminCustomerRoutes);
 
 export default router;
