@@ -13,7 +13,10 @@ import {
 } from "../config/razorpay.js";
 import { paymentIntentRepository } from "../repositories/paymentIntent.repository.js";
 import { productRepository } from "../repositories/product.repository.js";
+import { userRepository } from "../repositories/user.repository.js";
 import { buildOrderInTransaction } from "./order.service.js";
+import { emailService } from "./email.service.js";
+import { smsService } from "./sms.service.js";
 import { ApiError } from "../utils/ApiError.js";
 
 // Kept in sync with order.service.js / src/lib/pricing.js — the preview
@@ -37,7 +40,7 @@ function requireConfigured() {
 // second one. See paymentIntentRepository.claimForFinalization for how the
 // race is actually decided.
 async function finalizePaidIntent(intent, transactionId) {
-  return prisma.$transaction(async (tx) => {
+  const { order, isNewlyFinalized } = await prisma.$transaction(async (tx) => {
     const { count } = await paymentIntentRepository.claimForFinalization(intent.id, transactionId, tx);
 
     if (count === 0) {
@@ -46,16 +49,17 @@ async function finalizePaidIntent(intent, transactionId) {
       // UPDATE unblocks and sees 0 rows, so this read is safe.
       const current = await paymentIntentRepository.findById(intent.id, tx);
       if (current.orderId) {
-        return tx.order.findUnique({
+        const existingOrder = await tx.order.findUnique({
           where: { id: current.orderId },
           include: { items: true, address: true, payment: true },
         });
+        return { order: existingOrder, isNewlyFinalized: false };
       }
       throw new ApiError(409, "This payment is still being processed. Check your order history shortly.");
     }
 
     const { items, shipping } = intent.cartSnapshot;
-    const order = await buildOrderInTransaction(tx, intent.userId, {
+    const newOrder = await buildOrderInTransaction(tx, intent.userId, {
       items,
       shipping,
       paymentMethod: "UPI",
@@ -64,10 +68,25 @@ async function finalizePaidIntent(intent, transactionId) {
       paidAt: new Date(),
     });
 
-    await paymentIntentRepository.attachOrder(intent.id, order.id, tx);
+    await paymentIntentRepository.attachOrder(intent.id, newOrder.id, tx);
 
-    return order;
+    return { order: newOrder, isNewlyFinalized: true };
   });
+
+  // Fire-and-forget, and only on the winning branch — a browser /verify
+  // call racing the webhook for the same payment must never send this
+  // pair of emails twice (see the module comment above on why this
+  // function is idempotent in the first place).
+  if (isNewlyFinalized) {
+    const user = await userRepository.findById(intent.userId);
+    if (user) {
+      emailService.sendOrderConfirmationEmail(order, user);
+      emailService.sendPaymentSuccessEmail(order, user);
+    }
+    smsService.sendOrderPlacedSms(order);
+  }
+
+  return order;
 }
 
 export const paymentService = {

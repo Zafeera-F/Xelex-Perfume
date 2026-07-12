@@ -8,7 +8,16 @@ import EmptyState from "../../components/ui/EmptyState";
 import { getAdminOrder, updateOrderStatus, updateOrderPayment } from "../../lib/adminOrders";
 import { PATHS } from "../../routes/paths";
 
-const ORDER_STATUSES = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"];
+const ORDER_STATUSES = [
+  "PENDING",
+  "CONFIRMED",
+  "PROCESSING",
+  "SHIPPED",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+  "CANCELLED",
+  "RETURNED",
+];
 const PAYMENT_STATUSES = ["PENDING", "SUCCESS", "FAILED", "REFUNDED"];
 
 const STATUS_TONE = {
@@ -16,6 +25,7 @@ const STATUS_TONE = {
   CONFIRMED: "gold",
   PROCESSING: "gold",
   SHIPPED: "gold",
+  OUT_FOR_DELIVERY: "gold",
   DELIVERED: "success",
   CANCELLED: "muted",
   RETURNED: "muted",

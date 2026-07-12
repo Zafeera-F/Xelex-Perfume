@@ -20,6 +20,7 @@ const STATUS_TONE = {
   CONFIRMED: "gold",
   PROCESSING: "gold",
   SHIPPED: "gold",
+  OUT_FOR_DELIVERY: "gold",
   DELIVERED: "success",
   CANCELLED: "muted",
   RETURNED: "muted",

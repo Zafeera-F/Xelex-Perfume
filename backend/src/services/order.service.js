@@ -15,6 +15,9 @@ import prisma from "../config/prisma.js";
 import { orderRepository } from "../repositories/order.repository.js";
 import { addressRepository } from "../repositories/address.repository.js";
 import { productRepository } from "../repositories/product.repository.js";
+import { userRepository } from "../repositories/user.repository.js";
+import { emailService } from "./email.service.js";
+import { smsService } from "./sms.service.js";
 import { ApiError } from "../utils/ApiError.js";
 
 // Kept in sync with src/lib/pricing.js on the frontend — that copy is only
@@ -116,9 +119,21 @@ export const orderService = {
   async createOrder(userId, { items, shipping, paymentMethod }) {
     for (let attempt = 1; attempt <= MAX_ORDER_NUMBER_ATTEMPTS; attempt++) {
       try {
-        return await prisma.$transaction((tx) =>
+        const order = await prisma.$transaction((tx) =>
           buildOrderInTransaction(tx, userId, { items, shipping, paymentMethod })
         );
+
+        // Fire-and-forget — email.service.js/sms.service.js never block or
+        // throw back into this flow, so a slow/failing SMTP server or SMS
+        // gateway can never delay or fail order placement. Only reached
+        // once the transaction has actually committed, never from inside it.
+        const user = await userRepository.findById(userId);
+        if (user) {
+          emailService.sendOrderConfirmationEmail(order, user);
+        }
+        smsService.sendOrderPlacedSms(order);
+
+        return order;
       } catch (err) {
         // Same-day orderNumber collision — recompute the sequence and
         // retry, same race-handling posture as auth.service.js's P2002

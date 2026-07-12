@@ -8,7 +8,25 @@ import prisma from "../config/prisma.js";
 import { orderRepository } from "../repositories/order.repository.js";
 import { paymentRepository } from "../repositories/payment.repository.js";
 import { productRepository } from "../repositories/product.repository.js";
+import { emailService } from "./email.service.js";
+import { smsService } from "./sms.service.js";
 import { ApiError } from "../utils/ApiError.js";
+
+// Maps an OrderStatus to the email.service.js sender that announces it —
+// only statuses with a customer-facing email need an entry here.
+const STATUS_EMAIL_SENDERS = {
+  SHIPPED: "sendOrderShippedEmail",
+  DELIVERED: "sendOrderDeliveredEmail",
+  CANCELLED: "sendOrderCancelledEmail",
+};
+
+// Same idea for sms.service.js — a narrower set than email (no SMS for
+// cancellation), per the SMS notification requirements.
+const STATUS_SMS_SENDERS = {
+  SHIPPED: "sendOrderShippedSms",
+  OUT_FOR_DELIVERY: "sendOutForDeliverySms",
+  DELIVERED: "sendOrderDeliveredSms",
+};
 
 // An order's stock is "freed" — eligible to go back into sellable
 // inventory — once it's cancelled/returned, or its payment is refunded.
@@ -109,6 +127,20 @@ export const adminOrderService = {
       }
     });
 
+    // Fire-and-forget, and only on a real transition (existing.status
+    // reflects the pre-update state) — re-setting the same status twice
+    // must never re-send the email, same idempotency posture as the stock
+    // restoration above.
+    const isRealTransition = existing.status !== status;
+    const emailSenderName = STATUS_EMAIL_SENDERS[status];
+    if (emailSenderName && isRealTransition) {
+      emailService[emailSenderName](existing, existing.user);
+    }
+    const smsSenderName = STATUS_SMS_SENDERS[status];
+    if (smsSenderName && isRealTransition) {
+      smsService[smsSenderName](existing);
+    }
+
     return this.getById(id);
   },
 
@@ -138,6 +170,21 @@ export const adminOrderService = {
         await restoreStockForOrder(existing, tx);
       }
     });
+
+    // Fire-and-forget, and only on a real transition into SUCCESS — covers
+    // an admin manually reconciling a COD payment (UPI's own SUCCESS
+    // transition already sends this from payment.service.js's
+    // finalizePaidIntent, so this endpoint only fires it here).
+    if (existing.payment.status !== "SUCCESS" && status === "SUCCESS") {
+      // existing.payment reflects the pre-update row — merge in the
+      // just-set status/transactionId so the email shows the real
+      // reference the admin recorded, not the stale pre-update value.
+      const orderForEmail = {
+        ...existing,
+        payment: { ...existing.payment, status, ...(transactionId && { transactionId }) },
+      };
+      emailService.sendPaymentSuccessEmail(orderForEmail, existing.user);
+    }
 
     return this.getById(id);
   },
