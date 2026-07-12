@@ -6,6 +6,6 @@
 // these are the only images that still don't belong to any product.
 
 export const SECTION_IMAGES = {
-  hero: "https://picsum.photos/seed/xelex-hero/900/1100",
+  hero: "/hero-product.jpg",
   story: "https://picsum.photos/seed/xelex-story/800/1000",
 };
