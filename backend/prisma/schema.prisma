@@ -1,0 +1,382 @@
+// XeleX Venture — Prisma Schema
+// -----------------------------------------------------------------------------
+// Database: PostgreSQL
+// All primary keys are UUIDs. All models carry createdAt/updatedAt.
+// Soft delete (deletedAt) is used where a row needs to disappear from active
+// use while still being safely referenced by historical records (orders,
+// reviews, etc.) — see the per-model notes below for what does NOT soft-delete
+// and why.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum PaymentMethod {
+  UPI
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  MANAGER
+  STAFF
+}
+
+// -----------------------------------------------------------------------------
+// USERS
+// -----------------------------------------------------------------------------
+
+// Soft-deletes: a user closing their account shouldn't break the history of
+// orders/reviews they left behind — those rows keep a valid FK either way.
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  fullName      String
+  email         String    @unique
+  passwordHash  String
+  phone         String?
+  emailVerifiedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  addresses     Address[]
+  cart          Cart?
+  wishlist      Wishlist[]
+  orders        Order[]
+  reviews       Review[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// Separate auth realm from User, per project requirements — admins are not
+// customers and don't share the customer login/session flow.
+model AdminUser {
+  id           String     @id @default(uuid()) @db.Uuid
+  fullName     String
+  email        String     @unique
+  passwordHash String
+  role         AdminRole  @default(STAFF)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?  // revoke admin access without losing the audit trail of who did what
+
+  @@index([email])
+  @@map("admin_users")
+}
+
+// -----------------------------------------------------------------------------
+// CATALOG
+// -----------------------------------------------------------------------------
+
+// Soft-deletes: hiding a category from the storefront shouldn't orphan
+// products that still reference it, or break past orders that mention it.
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  products    Product[]
+
+  @@map("categories")
+}
+
+// Soft-deletes: same reasoning as Category — e.g. retiring a "Limited
+// Edition" collection shouldn't orphan the products that shipped under it.
+model Collection {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  products    Product[]
+
+  @@map("collections")
+}
+
+// Soft-deletes: a discontinued product must stay queryable forever because
+// OrderItem, Review, and Wishlist rows reference it. Availability to
+// customers is controlled by `isActive` + `stockQuantity`, not by deleting
+// the row.
+model Product {
+  id               String    @id @default(uuid()) @db.Uuid
+  name             String
+  slug             String    @unique
+  description      String
+  price            Decimal   @db.Decimal(10, 2)
+  compareAtPrice   Decimal?  @db.Decimal(10, 2) // original price, for showing a strikethrough discount
+  sku              String?   @unique
+  stockQuantity    Int       @default(0)
+  isActive         Boolean   @default(true) // storefront visibility toggle, independent of soft delete
+  isFeatured       Boolean   @default(false)
+  isBestSeller     Boolean   @default(false)
+  badge            String?   // e.g. "New", "Limited" — free-text tag shown on ProductCard
+  brandLine        String?   // e.g. "XeleX Signature" / "XeleX Rare" / "XeleX Classic"
+  ratingAverage    Decimal   @default(0) @db.Decimal(2, 1)
+  ratingCount      Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  categoryId       String?   @db.Uuid
+  category         Category? @relation(fields: [categoryId], references: [id])
+
+  collectionId     String?   @db.Uuid
+  collection       Collection? @relation(fields: [collectionId], references: [id])
+
+  images           ProductImage[]
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+  reviews          Review[]
+  wishlistedBy     Wishlist[]
+
+  @@index([categoryId])
+  @@index([collectionId])
+  @@index([slug])
+  @@map("products")
+}
+
+// No soft delete — image rows are trivial and fully dependent on their
+// product; if the product itself needs to disappear, cascading these away
+// is fine (the product row stays via soft delete, only orphaned images from
+// direct deletion would cascade, which shouldn't happen in normal operation).
+model ProductImage {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+// -----------------------------------------------------------------------------
+// WISHLIST
+// -----------------------------------------------------------------------------
+
+// Wishlist IS the join table (no separate "WishlistItem" concept needed —
+// saving/unsaving a product is a simple toggle, not a record worth retaining
+// after removal). Hard delete is fine here.
+model Wishlist {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String   @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId]) // a product can only be wishlisted once per user
+  @@index([userId])
+  @@map("wishlist")
+}
+
+// -----------------------------------------------------------------------------
+// CART
+// -----------------------------------------------------------------------------
+
+// One active cart per user. Hard delete is fine — an abandoned cart has no
+// historical value once its items are gone; Orders are the permanent record.
+model Cart {
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @unique @db.Uuid
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  items     CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  cartId    String   @db.Uuid
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String   @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId]) // adding an already-present product increments quantity instead of duplicating the row
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+// -----------------------------------------------------------------------------
+// ADDRESSES
+// -----------------------------------------------------------------------------
+
+// Soft-deletes: a past Order references the Address used at the time of
+// purchase. If the customer deletes that address later, the order must still
+// be able to show where it was shipped.
+model Address {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label         String?   // "Home", "Work", etc.
+  fullName      String
+  phone         String
+  addressLine1  String
+  addressLine2  String?
+  city          String
+  state         String
+  pincode       String
+  country        String   @default("India")
+  isDefault     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  orders        Order[]
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+// -----------------------------------------------------------------------------
+// ORDERS
+// -----------------------------------------------------------------------------
+
+// No soft delete on Order — orders are financial/legal records and are never
+// deleted. Cancellation is modeled as a status transition (`CANCELLED`), not
+// a delete, so the row and its history are always intact.
+model Order {
+  id             String        @id @default(uuid()) @db.Uuid
+  orderNumber    String        @unique // human-readable, e.g. "XV-20260706-0001"
+  userId         String        @db.Uuid
+  user           User          @relation(fields: [userId], references: [id])
+  addressId      String        @db.Uuid
+  address        Address       @relation(fields: [addressId], references: [id])
+  status         OrderStatus   @default(PENDING)
+  subtotal       Decimal       @db.Decimal(10, 2)
+  shippingFee    Decimal       @db.Decimal(10, 2) @default(0)
+  total          Decimal       @db.Decimal(10, 2)
+  paymentMethod  PaymentMethod
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  items          OrderItem[]
+  payment        Payment?
+
+  @@index([userId])
+  @@index([status])
+  @@map("orders")
+}
+
+// Snapshots productName/unitPrice at the time of purchase — deliberately
+// duplicated from Product rather than joined live, because a later price
+// change or rename must NOT rewrite what a past invoice says the customer
+// paid.
+model OrderItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  orderId      String   @db.Uuid
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String   @db.Uuid
+  product      Product  @relation(fields: [productId], references: [id])
+  productName  String   // snapshot, not a live join
+  unitPrice    Decimal  @db.Decimal(10, 2) // snapshot
+  quantity     Int
+  lineTotal    Decimal  @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// No soft delete — a payment's history (pending → success/failed → refunded)
+// is modeled with `status`, never erased. One payment per order.
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  orderId       String        @unique @db.Uuid
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?       // UPI reference ID; null for COD until collected
+  amount        Decimal       @db.Decimal(10, 2)
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status])
+  @@map("payments")
+}
+
+// -----------------------------------------------------------------------------
+// REVIEWS
+// -----------------------------------------------------------------------------
+
+// Soft-deletes: moderation should be able to hide a review (policy violation,
+// spam) without permanently destroying the record, in case of disputes.
+model Review {
+  id         String    @id @default(uuid()) @db.Uuid
+  productId  String    @db.Uuid
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String    @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating     Int       // 1-5, enforced at the application layer
+  title      String?
+  comment    String?
+  isApproved Boolean   @default(true) // moderation flag, independent of soft delete
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  @@unique([productId, userId]) // one review per user per product
+  @@index([productId])
+  @@map("reviews")
+}
+
+// -----------------------------------------------------------------------------
+// NEWSLETTER
+// -----------------------------------------------------------------------------
+
+// No `deletedAt` — unsubscribing is modeled as `unsubscribedAt`, which is
+// more meaningful here than a generic soft-delete flag (re-subscribing just
+// clears the timestamp rather than needing a whole new row).
+model NewsletterSubscriber {
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique
+  subscribedAt   DateTime  @default(now())
+  unsubscribedAt DateTime?
+
+  @@map("newsletter_subscribers")
+}

@@ -1,0 +1,11 @@
+// PLACEHOLDER IMAGE REGISTRY
+// ---------------------------------------------------------------------------
+// Non-product image URLs used on the homepage (hero, story section). Product
+// photography now lives in the database (ProductImage rows, seeded via
+// backend/prisma/seedData.js) and is served through the products API —
+// these are the only images that still don't belong to any product.
+
+export const SECTION_IMAGES = {
+  hero: "https://picsum.photos/seed/xelex-hero/900/1100",
+  story: "https://picsum.photos/seed/xelex-story/800/1000",
+};
