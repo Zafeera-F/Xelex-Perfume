@@ -9,7 +9,7 @@ import {
 } from "../controllers/adminProduct.controller.js";
 import { createProductValidator, updateProductValidator } from "../validators/adminProduct.validator.js";
 import { validate } from "../middlewares/validate.js";
-import { requireAdmin } from "../middlewares/admin.middleware.js";
+import { requireAdmin, requireRole } from "../middlewares/admin.middleware.js";
 
 const router = Router();
 
@@ -22,6 +22,6 @@ router.get("/", listProducts);
 router.get("/:id", getProduct);
 router.post("/", createProductValidator, validate, createProduct);
 router.patch("/:id", updateProductValidator, validate, updateProduct);
-router.delete("/:id", deleteProduct);
+router.delete("/:id", requireRole("MANAGER", "SUPER_ADMIN"), deleteProduct);
 
 export default router;

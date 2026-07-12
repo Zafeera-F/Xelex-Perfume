@@ -68,6 +68,8 @@ model User {
   passwordHash  String
   phone         String?
   emailVerifiedAt DateTime?
+  mfaSecret     String?   // set once enrollment starts, but mfaEnabled stays false until the first code is confirmed — see services/auth.service.js
+  mfaEnabled    Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
@@ -78,9 +80,31 @@ model User {
   orders        Order[]
   reviews       Review[]
   paymentIntents PaymentIntent[]
+  refreshTokens RefreshToken[]
 
   @@index([email])
   @@map("users")
+}
+
+// A revocable, DB-backed counterpart to the short-lived access token JWT —
+// see backend/src/utils/jwt.js for why access tokens alone (7-day expiry,
+// no revocation path) weren't enough. Only the SHA-256 hash of the raw
+// token is stored (utils/refreshToken.js), same reasoning as passwordHash:
+// a DB read alone should never be enough to impersonate a session. Rotated
+// on every use (backend/src/services/auth.service.js's refresh flow) —
+// revokedAt marks a token as no longer usable, whether from rotation,
+// logout, or (future) an admin-initiated "log out everywhere."
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 // Separate auth realm from User, per project requirements — admins are not
@@ -92,12 +116,34 @@ model AdminUser {
   passwordHash String
   role         AdminRole  @default(STAFF)
   lastLoginAt  DateTime?
+  mfaSecret    String?    // mandatory for admins — see requireAdmin's enforcement in middlewares/admin.middleware.js
+  mfaEnabled   Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?  // revoke admin access without losing the audit trail of who did what
 
+  refreshTokens AdminRefreshToken[]
+
   @@index([email])
   @@map("admin_users")
+}
+
+// Admin's counterpart to RefreshToken above — kept as a fully separate
+// model/table rather than a shared one, same realm-isolation reasoning as
+// everything else admin-related in this schema (separate secrets, separate
+// cookies): a bug or leak in one realm's refresh flow should never be able
+// to touch the other's.
+model AdminRefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  adminId   String    @db.Uuid
+  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([adminId])
+  @@map("admin_refresh_tokens")
 }
 
 // -----------------------------------------------------------------------------

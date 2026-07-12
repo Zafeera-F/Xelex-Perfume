@@ -17,6 +17,7 @@ export const PATHS = {
   admin: {
     root: "/admin",
     login: "/admin/login",
+    mfaSetup: "/admin/mfa-setup",
     dashboard: "/admin/dashboard",
     products: "/admin/products",
     newProduct: "/admin/products/new",

@@ -5,6 +5,35 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>XeleX Perfumes</title>
+    <!--
+      Content-Security-Policy — allowlists exactly what this app actually
+      loads today:
+        - style-src 'unsafe-inline': framer-motion (used throughout) and a
+          few components (Hero's particles, SectionDivider, ReviewsSection)
+          apply styles via inline `style` attributes — CSP has no practical
+          nonce/hash story for a client-only SPA like this one.
+        - fonts.googleapis.com / fonts.gstatic.com: the Cinzel/Poppins
+          Google Fonts @import in src/index.css.
+        - picsum.photos: still-placeholder section images (src/data/placeholderData.js).
+        - checkout.razorpay.com / api.razorpay.com / lumberjack.razorpay.com:
+          the Razorpay UPI checkout widget (src/lib/payments.js) and the
+          iframe/telemetry it opens.
+        - http://localhost:5000: the backend API in local dev — update this
+          to your real production API origin (and drop the http:// one)
+          once this is actually deployed somewhere.
+        - *.sentry.io: Sentry error reporting (src/main.jsx) — inert until
+          VITE_SENTRY_DSN is actually set, harmless to allow either way.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; object-src 'none';
+        script-src 'self' https://checkout.razorpay.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: https://picsum.photos http://localhost:5000;
+        connect-src 'self' http://localhost:5000 https://api.razorpay.com https://lumberjack.razorpay.com https://*.sentry.io;
+        frame-src https://api.razorpay.com https://checkout.razorpay.com;"
+    />
   </head>
   <body>
     <div id="root"></div>

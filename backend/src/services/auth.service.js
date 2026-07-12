@@ -4,19 +4,45 @@
 
 import bcrypt from "bcrypt";
 import { userRepository } from "../repositories/user.repository.js";
+import { refreshTokenRepository } from "../repositories/refreshToken.repository.js";
 import { ApiError } from "../utils/ApiError.js";
-import { signToken } from "../utils/jwt.js";
+import { signToken, verifyToken } from "../utils/jwt.js";
+import { generateRefreshToken, hashRefreshToken, REFRESH_TOKEN_EXPIRES_IN_MS } from "../utils/refreshToken.js";
+import { generateMfaSecret, verifyMfaCode, generateMfaQrCode } from "../utils/mfa.js";
 
 // 12 is the current recommended minimum for bcrypt (10 was the older
 // default) — configurable via env in case infra constraints call for a
 // different value later, without a code change.
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
 
-// Strips passwordHash (and anything else sensitive, going forward) before a
-// user record is ever handed back toward a controller/response.
+// The MFA-pending token's own lifetime — long enough to type a 6-digit
+// code, short enough that a leaked one is useless shortly after.
+const MFA_PENDING_EXPIRES_IN = "5m";
+
+// Strips passwordHash and mfaSecret (and anything else sensitive, going
+// forward) before a user record is ever handed back toward a
+// controller/response. mfaEnabled (just a boolean) stays — the frontend
+// needs it to know whether to prompt for a code.
 function sanitizeUser(user) {
-  const { passwordHash, ...safeUser } = user; // eslint-disable-line no-unused-vars
+  const { passwordHash, mfaSecret, ...safeUser } = user; // eslint-disable-line no-unused-vars
   return safeUser;
+}
+
+// Issues both tokens for a freshly-authenticated user: a short-lived
+// access token (JWT, verified statelessly) and a long-lived refresh token
+// (opaque, DB-backed, revocable — see utils/refreshToken.js). Shared by
+// register/login/refresh so all three ever only mint tokens one way.
+async function issueTokens(userId) {
+  const accessToken = signToken({ sub: userId });
+
+  const rawRefreshToken = generateRefreshToken();
+  await refreshTokenRepository.create({
+    userId,
+    tokenHash: hashRefreshToken(rawRefreshToken),
+    expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_IN_MS),
+  });
+
+  return { accessToken, refreshToken: rawRefreshToken };
 }
 
 export const authService = {
@@ -44,9 +70,9 @@ export const authService = {
     }
 
     // Auto-authenticate immediately after registration, per requirements.
-    const token = signToken({ sub: user.id });
+    const tokens = await issueTokens(user.id);
 
-    return { user: sanitizeUser(user), token };
+    return { user: sanitizeUser(user), ...tokens };
   },
 
   async login({ email, password }) {
@@ -64,9 +90,123 @@ export const authService = {
       throw new ApiError(401, "Invalid email or password");
     }
 
-    const token = signToken({ sub: user.id });
+    // Password alone isn't enough for an MFA-enabled account — hand back a
+    // single-purpose "pending" token instead of a real session. No
+    // access/refresh/CSRF cookie exists yet at this point; the client
+    // must call verifyMfaLogin with the code from their authenticator app
+    // before a real session is issued.
+    if (user.mfaEnabled) {
+      const mfaPendingToken = signToken({ sub: user.id, purpose: "mfa" }, undefined, MFA_PENDING_EXPIRES_IN);
+      return { mfaRequired: true, mfaPendingToken };
+    }
 
-    return { user: sanitizeUser(user), token };
+    const tokens = await issueTokens(user.id);
+
+    return { mfaRequired: false, user: sanitizeUser(user), ...tokens };
+  },
+
+  async verifyMfaLogin(mfaPendingToken, code) {
+    if (!mfaPendingToken) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    let payload;
+    try {
+      payload = verifyToken(mfaPendingToken);
+    } catch {
+      throw new ApiError(401, "Invalid or expired session");
+    }
+    if (payload.purpose !== "mfa") {
+      throw new ApiError(401, "Invalid or expired session");
+    }
+
+    const user = await userRepository.findById(payload.sub);
+    if (!user || !user.mfaEnabled) {
+      throw new ApiError(401, "Invalid or expired session");
+    }
+
+    const isValidCode = await verifyMfaCode(user.mfaSecret, code);
+    if (!isValidCode) {
+      throw new ApiError(401, "Invalid verification code");
+    }
+
+    const tokens = await issueTokens(user.id);
+    return { user: sanitizeUser(user), ...tokens };
+  },
+
+  // Enrollment is two steps, matching the industry-standard flow (Google/
+  // GitHub/etc.): generate + display a secret (setupMfa), then require one
+  // real code from the user's authenticator app before flipping mfaEnabled
+  // (confirmMfaSetup) — this catches a mistyped QR scan or wrong app
+  // *before* the account depends on it, rather than after.
+  async setupMfa(userId) {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    const secret = generateMfaSecret();
+    await userRepository.setMfaSecret(userId, secret);
+    const qrCodeDataUrl = await generateMfaQrCode(secret, user.email);
+
+    return { secret, qrCodeDataUrl };
+  },
+
+  async confirmMfaSetup(userId, code) {
+    const user = await userRepository.findById(userId);
+    if (!user || !user.mfaSecret) {
+      throw new ApiError(400, "Start MFA setup before confirming it");
+    }
+
+    const isValidCode = await verifyMfaCode(user.mfaSecret, code);
+    if (!isValidCode) {
+      throw new ApiError(400, "Invalid verification code");
+    }
+
+    await userRepository.confirmMfa(userId);
+  },
+
+  // Requires the password again (not just a TOTP code) — the same
+  // "step back up to a real credential for a sensitive action" posture
+  // changePassword already uses, so a stolen/unlocked device with an
+  // active session alone can't turn MFA off.
+  async disableMfaForUser(userId, password) {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      throw new ApiError(401, "Incorrect password");
+    }
+
+    await userRepository.disableMfa(userId);
+  },
+
+  // Rotation: the presented refresh token is revoked and a brand new one
+  // issued in the same breath as the new access token — a refresh token
+  // only ever works once. If a revoked/expired/unknown token is presented
+  // (e.g. a stolen one already used by its real owner), this just fails
+  // closed with a 401 rather than silently granting anything.
+  async refresh(rawRefreshToken) {
+    if (!rawRefreshToken) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    const existing = await refreshTokenRepository.findValid(hashRefreshToken(rawRefreshToken));
+    if (!existing) {
+      throw new ApiError(401, "Invalid or expired session");
+    }
+
+    await refreshTokenRepository.revoke(existing.id);
+    return issueTokens(existing.userId);
+  },
+
+  async logout(rawRefreshToken) {
+    if (rawRefreshToken) {
+      await refreshTokenRepository.revokeByHash(hashRefreshToken(rawRefreshToken));
+    }
   },
 
   async getProfile(userId) {

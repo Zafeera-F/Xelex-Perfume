@@ -25,3 +25,7 @@ export const adminChangePasswordValidator = [
   body("currentPassword").notEmpty().withMessage("Current password is required"),
   strongPassword("newPassword"),
 ];
+
+export const adminMfaCodeValidator = [
+  body("code").trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage("Enter the 6-digit code from your authenticator app"),
+];

@@ -16,6 +16,8 @@ import cookieParser from "cookie-parser";
 import routes from "./routes/index.js";
 import { notFound } from "./middlewares/notFound.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
+import { apiLimiter } from "./middlewares/rateLimit.js";
+import { requireCsrf } from "./middlewares/csrf.js";
 
 const app = express();
 
@@ -45,6 +47,12 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 // are added; harmless and already-configured before that point.
 app.use(cookieParser());
 
+// CSRF — global, applied before routes so no future mutating endpoint can
+// ship without it by a route author forgetting to add it per-route. Only
+// acts on non-safe methods (see middlewares/csrf.js for the excluded
+// paths — login/register/refresh/logout/webhook).
+app.use(requireCsrf);
+
 // Body parsers — JSON for API requests, urlencoded for traditional form
 // submissions. The `verify` callback stashes the exact raw request bytes
 // onto `req.rawBody` — the Razorpay webhook handler needs those (not the
@@ -71,6 +79,11 @@ app.use(
     setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"),
   })
 );
+
+// Rate limiting — general ceiling on every /api route. Stricter limits on
+// the specific brute-force-prone endpoints (login, register,
+// change-password) are applied directly in their route files.
+app.use("/api", apiLimiter);
 
 // Routes
 app.use("/", routes);

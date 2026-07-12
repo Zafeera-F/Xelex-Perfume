@@ -29,10 +29,25 @@ export function AdminAuthProvider({ children }) {
     refreshProfile();
   }, [refreshProfile]);
 
+  // MFA-enabled admins don't get a session from this call alone — see
+  // AuthContext.login for the same two-step shape on the customer side.
   async function login({ email, password }) {
-    const { admin: loggedInAdmin } = await apiRequest("/api/admin/auth/login", {
+    const result = await apiRequest("/api/admin/auth/login", {
       method: "POST",
       body: { email, password },
+    });
+    if (result.mfaRequired) {
+      return { mfaRequired: true };
+    }
+    setAdmin(result.admin);
+    setStatus("authenticated");
+    return { mfaRequired: false, admin: result.admin };
+  }
+
+  async function verifyMfaLogin(code) {
+    const { admin: loggedInAdmin } = await apiRequest("/api/admin/auth/mfa/login-verify", {
+      method: "POST",
+      body: { code },
     });
     setAdmin(loggedInAdmin);
     setStatus("authenticated");
@@ -45,7 +60,29 @@ export function AdminAuthProvider({ children }) {
     setStatus("guest");
   }
 
-  const value = { admin, status, login, logout, refreshProfile };
+  // Mandatory for every admin — no disable endpoint exists on this realm
+  // (see backend/src/services/admin.service.js). setupMfa/confirmMfaSetup
+  // mirror the customer versions; AdminLayout redirects here whenever
+  // admin.mfaEnabled is false, regardless of which route was requested.
+  async function setupMfa() {
+    return apiRequest("/api/admin/auth/mfa/setup", { method: "POST" });
+  }
+
+  async function confirmMfaSetup(code) {
+    await apiRequest("/api/admin/auth/mfa/verify-setup", { method: "POST", body: { code } });
+    await refreshProfile();
+  }
+
+  const value = {
+    admin,
+    status,
+    login,
+    verifyMfaLogin,
+    logout,
+    setupMfa,
+    confirmMfaSetup,
+    refreshProfile,
+  };
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
 }

@@ -16,6 +16,7 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 
 import AdminLogin from "./pages/admin/AdminLogin";
+import AdminMfaSetup from "./pages/admin/AdminMfaSetup";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProductList from "./pages/admin/AdminProductList";
 import AdminProductForm from "./pages/admin/AdminProductForm";
@@ -45,6 +46,7 @@ function App() {
       {/* Standalone — not nested under AdminLayout, which assumes an
           authenticated admin (a sidebar has nothing to show otherwise). */}
       <Route path={PATHS.admin.login} element={<AdminLogin />} />
+      <Route path={PATHS.admin.mfaSetup} element={<AdminMfaSetup />} />
 
       <Route path={PATHS.admin.root} element={<AdminLayout />}>
         <Route index element={<Navigate to={PATHS.admin.dashboard} replace />} />

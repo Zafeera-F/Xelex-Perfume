@@ -8,12 +8,14 @@ import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
+import MfaSetup from "../components/ui/MfaSetup";
 import { fadeInUp } from "../lib/animations";
 import { useAuth } from "../context/AuthContext";
 import { getOrders } from "../lib/orders";
 import { PATHS } from "../routes/paths";
 
 const EMPTY_PASSWORD_FORM = { currentPassword: "", newPassword: "" };
+const EMPTY_DISABLE_MFA_FORM = { password: "" };
 
 const STATUS_TONE = {
   PENDING: "gold",
@@ -27,7 +29,7 @@ const STATUS_TONE = {
 };
 
 export default function Profile() {
-  const { user, status, logout, changePassword } = useAuth();
+  const { user, status, logout, changePassword, setupMfa, confirmMfaSetup, disableMfa } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -35,6 +37,11 @@ export default function Profile() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [showMfaSetup, setShowMfaSetup] = useState(false);
+  const [disableMfaForm, setDisableMfaForm] = useState(EMPTY_DISABLE_MFA_FORM);
+  const [disableMfaError, setDisableMfaError] = useState("");
+  const [isDisablingMfa, setIsDisablingMfa] = useState(false);
 
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -81,6 +88,20 @@ export default function Profile() {
   async function handleLogout() {
     await logout();
     navigate(PATHS.home);
+  }
+
+  async function handleDisableMfaSubmit(e) {
+    e.preventDefault();
+    setDisableMfaError("");
+    setIsDisablingMfa(true);
+    try {
+      await disableMfa(disableMfaForm.password);
+      setDisableMfaForm(EMPTY_DISABLE_MFA_FORM);
+    } catch (err) {
+      setDisableMfaError(err.message || "Unable to disable two-factor authentication. Please try again.");
+    } finally {
+      setIsDisablingMfa(false);
+    }
   }
 
   return (
@@ -157,6 +178,51 @@ export default function Profile() {
               {isSubmitting ? "Updating…" : "Update Password"}
             </Button>
           </form>
+        </Card>
+
+        <Card className="p-6 md:col-span-2" hoverable={false}>
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="font-display text-lg text-ivory">Two-Factor Authentication</h2>
+            <Badge tone={user.mfaEnabled ? "success" : "muted"}>{user.mfaEnabled ? "Enabled" : "Disabled"}</Badge>
+          </div>
+
+          {user.mfaEnabled ? (
+            <form onSubmit={handleDisableMfaSubmit} className="max-w-sm space-y-4">
+              <p className="text-sm text-muted">
+                Enter your password to turn off two-factor authentication for this account.
+              </p>
+              {disableMfaError && (
+                <p className="rounded-[var(--radius-card)] border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+                  {disableMfaError}
+                </p>
+              )}
+              <Field label="Password">
+                <Input
+                  required
+                  type="password"
+                  autoComplete="current-password"
+                  value={disableMfaForm.password}
+                  onChange={(e) => setDisableMfaForm({ password: e.target.value })}
+                />
+              </Field>
+              <Button type="submit" variant="outline" disabled={isDisablingMfa}>
+                {isDisablingMfa ? "Disabling…" : "Disable Two-Factor Authentication"}
+              </Button>
+            </form>
+          ) : showMfaSetup ? (
+            <div className="max-w-sm">
+              <MfaSetup onSetup={setupMfa} onConfirm={confirmMfaSetup} onSuccess={() => setShowMfaSetup(false)} />
+            </div>
+          ) : (
+            <div className="max-w-sm space-y-4">
+              <p className="text-sm text-muted">
+                Add an extra layer of security to your account with a code from an authenticator app.
+              </p>
+              <Button type="button" variant="outline" onClick={() => setShowMfaSetup(true)}>
+                Enable Two-Factor Authentication
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
 

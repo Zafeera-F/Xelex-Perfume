@@ -35,4 +35,19 @@ export const adminUserRepository = {
       data: { lastLoginAt: new Date() },
     });
   },
+
+  // Enrollment starts here — the secret is stored, but mfaEnabled stays
+  // false until confirmMfa below runs. Mandatory for every admin — see
+  // requireAdmin's enforcement in middlewares/admin.middleware.js.
+  setMfaSecret(id, mfaSecret) {
+    return prisma.adminUser.update({ where: { id }, data: { mfaSecret } });
+  },
+
+  confirmMfa(id) {
+    return prisma.adminUser.update({ where: { id }, data: { mfaEnabled: true } });
+  },
+
+  disableMfa(id) {
+    return prisma.adminUser.update({ where: { id }, data: { mfaEnabled: false, mfaSecret: null } });
+  },
 };

@@ -1,0 +1,7 @@
+# Git for Windows runs hooks through its own bundled sh.exe with a
+# deliberately minimal PATH that doesn't include Node at all — add common
+# install locations explicitly rather than assuming any particular shell's
+# PATH is inherited (a well-known Windows-specific husky gotcha).
+export PATH="/c/Program Files/nodejs:$PATH"
+
+"$(dirname "$0")/../node_modules/.bin/lint-staged"

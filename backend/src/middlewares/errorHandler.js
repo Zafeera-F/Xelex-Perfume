@@ -7,13 +7,36 @@
 // Must be registered LAST in app.js, after notFound and all real routes —
 // Express recognizes it as an error handler specifically because it takes
 // 4 arguments (err, req, res, next).
+//
+// ApiError vs. everything else is a deliberate trust boundary: ApiError
+// messages are hand-written by this codebase specifically to be safe to
+// show a client ("Product not found", "Invalid email or password", ...).
+// Anything else — a raw Prisma error, a TypeError from a bug, whatever —
+// was never written with an end user in mind, so its .message might
+// reveal schema/column names or internal structure. Those always get a
+// fixed generic message instead, in every environment, and are always
+// logged server-side (not just in dev) so they're never a silent blind
+// spot in production.
+
+import { ApiError } from "../utils/ApiError.js";
+import { Sentry, isSentryConfigured } from "../config/sentry.js";
+
+const GENERIC_MESSAGE = "Something went wrong. Please try again.";
 
 export function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
+  const isSafe = err instanceof ApiError;
   const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  const errors = err.errors || [];
+  const message = isSafe ? err.message : GENERIC_MESSAGE;
+  const errors = isSafe ? err.errors || [] : [];
 
-  if (process.env.NODE_ENV !== "production") {
+  if (!isSafe) {
+    // Always logged, including production — an unexpected error hidden
+    // from the client must still be visible to us. Sentry (when
+    // configured) gets this too, alongside the console log rather than
+    // instead of it.
+    console.error(err);
+    if (isSentryConfigured) Sentry.captureException(err);
+  } else if (process.env.NODE_ENV !== "production") {
     console.error(err);
   }
 

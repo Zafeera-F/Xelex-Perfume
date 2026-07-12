@@ -33,6 +33,20 @@ export const userRepository = {
     });
   },
 
+  // Enrollment starts here — the secret is stored, but mfaEnabled stays
+  // false (see the schema comment) until confirmMfa below runs.
+  setMfaSecret(id, mfaSecret) {
+    return prisma.user.update({ where: { id }, data: { mfaSecret } });
+  },
+
+  confirmMfa(id) {
+    return prisma.user.update({ where: { id }, data: { mfaEnabled: true } });
+  },
+
+  disableMfa(id) {
+    return prisma.user.update({ where: { id }, data: { mfaEnabled: false, mfaSecret: null } });
+  },
+
   // --- Admin-facing methods (every customer, plus dashboard aggregates) -
 
   count() {

@@ -31,6 +31,14 @@ export default function AdminLayout() {
     return <Navigate to={PATHS.admin.login} state={{ from: location.pathname }} replace />;
   }
 
+  // Mandatory for every admin — mirrors the backend's own enforcement in
+  // requireAdmin (which blocks everything but the setup routes when
+  // mfaEnabled is false), so an admin can't route around this by editing
+  // the URL: the API would 403 anyway.
+  if (!admin.mfaEnabled) {
+    return <Navigate to={PATHS.admin.mfaSetup} replace />;
+  }
+
   async function handleLogout() {
     await logout();
     navigate(PATHS.admin.login);

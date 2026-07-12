@@ -33,3 +33,13 @@ export const changePasswordValidator = [
   body("currentPassword").notEmpty().withMessage("Current password is required"),
   strongPassword("newPassword"),
 ];
+
+// TOTP codes are always 6 digits — used for both the login-time
+// verification step and confirming enrollment.
+export const mfaCodeValidator = [
+  body("code").trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage("Enter the 6-digit code from your authenticator app"),
+];
+
+export const disableMfaValidator = [
+  body("password").notEmpty().withMessage("Password is required"),
+];

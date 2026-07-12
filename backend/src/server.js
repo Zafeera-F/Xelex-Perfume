@@ -5,6 +5,7 @@
 // this file is the "how it boots" (env vars, port, the listen() call).
 
 import "dotenv/config";
+import "./config/sentry.js"; // must run before app.js so Sentry.init() fires as early as possible
 import app from "./app.js";
 
 const PORT = process.env.PORT || 5000;

@@ -32,10 +32,28 @@ export function AuthProvider({ children }) {
     refreshProfile();
   }, [refreshProfile]);
 
+  // MFA-enabled accounts don't get a session from this call alone — the
+  // backend issues only a short-lived pending cookie and expects a second
+  // call to verifyMfaLogin with a TOTP code. Callers must check
+  // `mfaRequired` on the result rather than assuming login() always signs
+  // the user in.
   async function login({ email, password }) {
-    const { user: loggedInUser } = await apiRequest("/api/auth/login", {
+    const result = await apiRequest("/api/auth/login", {
       method: "POST",
       body: { email, password },
+    });
+    if (result.mfaRequired) {
+      return { mfaRequired: true };
+    }
+    setUser(result.user);
+    setStatus("authenticated");
+    return { mfaRequired: false, user: result.user };
+  }
+
+  async function verifyMfaLogin(code) {
+    const { user: loggedInUser } = await apiRequest("/api/auth/mfa/login-verify", {
+      method: "POST",
+      body: { code },
     });
     setUser(loggedInUser);
     setStatus("authenticated");
@@ -65,7 +83,36 @@ export function AuthProvider({ children }) {
     });
   }
 
-  const value = { user, status, login, register, logout, changePassword, refreshProfile };
+  // Optional for customers — toggled from the Profile page. Returns
+  // { secret, qrCodeDataUrl } for MfaSetup to render; mfaEnabled only
+  // flips once confirmMfaSetup verifies the first code.
+  async function setupMfa() {
+    return apiRequest("/api/auth/mfa/setup", { method: "POST" });
+  }
+
+  async function confirmMfaSetup(code) {
+    await apiRequest("/api/auth/mfa/verify-setup", { method: "POST", body: { code } });
+    await refreshProfile();
+  }
+
+  async function disableMfa(password) {
+    await apiRequest("/api/auth/mfa/disable", { method: "POST", body: { password } });
+    await refreshProfile();
+  }
+
+  const value = {
+    user,
+    status,
+    login,
+    verifyMfaLogin,
+    register,
+    logout,
+    changePassword,
+    setupMfa,
+    confirmMfaSetup,
+    disableMfa,
+    refreshProfile,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
