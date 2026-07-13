@@ -16,14 +16,14 @@ export default function BestSellers() {
   if (bestSellers.length === 0) return null;
 
   return (
-    <section className="border-y border-border bg-background-soft py-24">
+    <section className="border-y border-border bg-background-soft py-16">
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={revealViewport}
           variants={fadeInUp}
-          className="mb-12 flex items-end justify-between"
+          className="mb-8 flex items-end justify-between"
         >
           <div>
             <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold">Most Loved</p>

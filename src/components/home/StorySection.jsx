@@ -5,8 +5,8 @@ import { SECTION_IMAGES } from "../../data/placeholderData";
 
 export default function StorySection() {
   return (
-    <section className="mx-auto max-w-7xl px-6 py-24 md:px-10">
-      <div className="grid grid-cols-1 items-center gap-14 md:grid-cols-2">
+    <section className="mx-auto max-w-7xl px-6 py-16 md:px-10">
+      <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
         <motion.div
           initial="hidden"
           whileInView="visible"

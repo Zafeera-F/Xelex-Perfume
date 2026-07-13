@@ -25,7 +25,7 @@ export default function Newsletter() {
         whileInView="visible"
         viewport={revealViewport}
         variants={fadeInUp}
-        className="mx-auto max-w-2xl px-6 py-20 text-center md:px-10"
+        className="mx-auto max-w-2xl px-6 py-14 text-center md:px-10"
       >
         <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold">Stay In Scent</p>
         <h2 className="font-display text-2xl text-ivory md:text-3xl">

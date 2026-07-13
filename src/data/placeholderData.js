@@ -1,4 +1,4 @@
-// PLACEHOLDER IMAGE REGISTRY
+// SECTION IMAGE REGISTRY
 // ---------------------------------------------------------------------------
 // Non-product image URLs used on the homepage (hero, story section). Product
 // photography now lives in the database (ProductImage rows, seeded via
@@ -7,5 +7,5 @@
 
 export const SECTION_IMAGES = {
   hero: "/hero-product.jpg",
-  story: "https://picsum.photos/seed/xelex-story/800/1000",
+  story: "/story-boutique.jpg",
 };

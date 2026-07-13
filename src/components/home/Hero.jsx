@@ -31,7 +31,7 @@ export default function Hero() {
         />
       ))}
 
-      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 py-20 md:grid-cols-2 md:px-10 md:py-28">
+      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 py-14 md:grid-cols-2 md:px-10 md:py-20">
         <motion.div
           initial="hidden"
           animate="visible"

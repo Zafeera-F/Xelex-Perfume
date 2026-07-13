@@ -29,18 +29,18 @@ const VALUES = [
 
 export default function WhyChooseUs() {
   return (
-    <section className="border-y border-border bg-background-soft py-24">
+    <section className="border-y border-border bg-background-soft py-16">
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={revealViewport}
           variants={fadeInUp}
-          className="mb-14 text-center"
+          className="mb-10 text-center"
         >
           <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold">Why XeleX</p>
           <h2 className="font-display text-3xl text-ivory md:text-4xl">Why Choose Us</h2>
-          <SectionDivider className="mt-8" />
+          <SectionDivider className="mt-6" />
         </motion.div>
 
         <motion.div
