@@ -12,7 +12,11 @@
 // silently from the refresh cookie. This wrapper handles that transparently
 // — callers never need to know tokens refresh at all.
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// `??` (not `||`) so an intentionally-empty VITE_API_URL is respected as
+// "use relative URLs" — needed for the Vercel-proxy deployment setup, where
+// the frontend and API share an origin and a same-origin/relative request
+// is exactly what lets the rewrite route it to the backend. See vercel.json.
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export class ApiClientError extends Error {
   constructor(message, status, errors = []) {
