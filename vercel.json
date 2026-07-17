@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://REPLACE_WITH_RENDER_BACKEND_URL/api/:path*" },
-    { "source": "/uploads/:path*", "destination": "https://REPLACE_WITH_RENDER_BACKEND_URL/uploads/:path*" }
+    { "source": "/api/:path*", "destination": "https://xelex-backend.onrender.com/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://xelex-backend.onrender.com/uploads/:path*" }
   ]
 }
