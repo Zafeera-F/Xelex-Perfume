@@ -12,11 +12,13 @@
 // silently from the refresh cookie. This wrapper handles that transparently
 // — callers never need to know tokens refresh at all.
 
-// `??` (not `||`) so an intentionally-empty VITE_API_URL is respected as
-// "use relative URLs" — needed for the Vercel-proxy deployment setup, where
-// the frontend and API share an origin and a same-origin/relative request
-// is exactly what lets the rewrite route it to the backend. See vercel.json.
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+// Vercel's env var UI won't accept a saved-but-empty value, so rather than
+// relying on an explicitly-blank VITE_API_URL, an unset one now defaults to
+// relative URLs in any production build (import.meta.env.PROD) — exactly
+// what the Vercel-proxy deployment setup needs (see vercel.json), without
+// requiring VITE_API_URL to be set on Vercel at all. Local dev is
+// unaffected: VITE_API_URL is explicitly set in .env there.
+const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "" : "http://localhost:5000");
 
 export class ApiClientError extends Error {
   constructor(message, status, errors = []) {
