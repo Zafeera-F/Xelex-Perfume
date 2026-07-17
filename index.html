@@ -14,9 +14,11 @@
           nonce/hash story for a client-only SPA like this one.
         - fonts.googleapis.com / fonts.gstatic.com: the Cinzel/Poppins
           Google Fonts @import in src/index.css.
-        - checkout.razorpay.com / api.razorpay.com / lumberjack.razorpay.com:
-          the Razorpay UPI checkout widget (src/lib/payments.js) and the
-          iframe/telemetry it opens.
+        - checkout.razorpay.com / api.razorpay.com / lumberjack.razorpay.com /
+          cdn.razorpay.com: the Razorpay UPI checkout widget
+          (src/lib/payments.js), the iframe/telemetry it opens, and its
+          risk-detection bundle (loaded from the cdn.* subdomain, not
+          checkout.*).
         - http://localhost:5000: the backend API in local dev — update this
           to your real production API origin (and drop the http:// one)
           once this is actually deployed somewhere.
@@ -26,7 +28,7 @@
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; base-uri 'self'; object-src 'none';
-        script-src 'self' https://checkout.razorpay.com;
+        script-src 'self' https://checkout.razorpay.com https://cdn.razorpay.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' data: http://localhost:5000;

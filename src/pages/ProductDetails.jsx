@@ -86,10 +86,13 @@ export default function ProductDetails() {
       navigate(PATHS.login, { state: { from: PATHS.productLink(product.id) } });
       return;
     }
+    // WishlistContext already rolls the optimistic update back on failure
+    // (the heart un-fills) — that's the user-visible feedback, so a failed
+    // toggle here is a silent no-op rather than an uncaught rejection.
     if (wishlisted) {
-      wishlist.remove(product.id);
+      wishlist.remove(product.id).catch(() => {});
     } else {
-      wishlist.add(product);
+      wishlist.add(product).catch(() => {});
     }
   }
 

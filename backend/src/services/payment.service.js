@@ -115,11 +115,25 @@ export const paymentService = {
     const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
     const total = subtotal + shippingFee;
 
-    const gatewayOrder = await razorpay.orders.create({
-      amount: Math.round(total * 100), // Razorpay wants the amount in paise
-      currency: "INR",
-      receipt: `xv_${Date.now()}`,
-    });
+    // The razorpay SDK's own error handling is fragile: on a network-level
+    // failure (timeout, DNS blip, connection reset — no HTTP response at
+    // all) it throws `{ statusCode: err.response.status, ... }` without
+    // checking err.response exists first, crashing with a raw
+    // "Cannot read properties of undefined (reading 'status')" TypeError
+    // instead of a usable error. Catch broadly here so a transient network
+    // hiccup talking to Razorpay surfaces as a clean, safe ApiError instead
+    // of an unhandled crash — genuine Razorpay API errors (which do have
+    // `error.description`) are still passed through with their real message.
+    let gatewayOrder;
+    try {
+      gatewayOrder = await razorpay.orders.create({
+        amount: Math.round(total * 100), // Razorpay wants the amount in paise
+        currency: "INR",
+        receipt: `xv_${Date.now()}`,
+      });
+    } catch (err) {
+      throw new ApiError(502, err?.error?.description || "Unable to reach the payment gateway. Please try again.");
+    }
 
     await paymentIntentRepository.create({
       userId,

@@ -38,10 +38,13 @@ export default function ProductCard({ id, name, notes, price, image, badge, inSt
       navigate(PATHS.login, { state: { from: PATHS.productLink(id) } });
       return;
     }
+    // WishlistContext already rolls the optimistic update back on failure
+    // (the heart un-fills) — that's the user-visible feedback, so a failed
+    // toggle here is a silent no-op rather than an uncaught rejection.
     if (wishlisted) {
-      wishlist.remove(id);
+      wishlist.remove(id).catch(() => {});
     } else {
-      wishlist.add({ id, name, notes, price, image, badge, inStock });
+      wishlist.add({ id, name, notes, price, image, badge, inStock }).catch(() => {});
     }
   }
 
