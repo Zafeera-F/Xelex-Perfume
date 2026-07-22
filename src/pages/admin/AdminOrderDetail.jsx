@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, Printer } from "lucide-react";
 import Card from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -41,6 +41,22 @@ export default function AdminOrderDetail() {
   const [error, setError] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [paymentUpdating, setPaymentUpdating] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  // jsPDF's build bundles an internal html2canvas-based renderer (used by
+  // its .html() API, which this invoice never calls) — dynamically
+  // importing it here keeps that ~100KB+ gzipped out of every visitor's
+  // initial bundle, loading it only the moment an admin actually clicks
+  // Download PDF.
+  async function handleDownloadPdf() {
+    setIsGeneratingPdf(true);
+    try {
+      const { generateInvoicePdf } = await import("../../lib/invoicePdf");
+      generateInvoicePdf(order).save(`invoice-${order.orderNumber}.pdf`);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }
 
   useEffect(() => {
     getAdminOrder(id)
@@ -92,14 +108,29 @@ export default function AdminOrderDetail() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link to={PATHS.admin.orders} className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-muted hover:text-gold">
+      <Link
+        to={PATHS.admin.orders}
+        className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-muted hover:text-gold print:hidden"
+      >
         <ArrowLeft size={14} />
         Back to Orders
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl text-ivory">{order.orderNumber}</h1>
-        <Badge tone={STATUS_TONE[order.status] || "muted"}>{order.status}</Badge>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-2xl text-ivory">{order.orderNumber}</h1>
+          <Badge tone={STATUS_TONE[order.status] || "muted"}>{order.status}</Badge>
+        </div>
+        <div className="flex items-center gap-3 print:hidden">
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer size={15} className="mr-2" />
+            Print
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleDownloadPdf} disabled={isGeneratingPdf}>
+            <Download size={15} className="mr-2" />
+            {isGeneratingPdf ? "Preparing…" : "Download PDF"}
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -108,7 +139,7 @@ export default function AdminOrderDetail() {
         </p>
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 print:hidden">
         <Card className="p-6" hoverable={false}>
           <h2 className="mb-4 font-display text-lg text-ivory">Order Status</h2>
           <select
@@ -189,14 +220,29 @@ export default function AdminOrderDetail() {
             <span>Shipping</span>
             <span>{order.shippingFee === 0 ? "Free" : `₹${order.shippingFee.toLocaleString("en-IN")}`}</span>
           </div>
+          {order.coupon && (
+            <div className="flex justify-between text-gold">
+              <span>Discount ({order.coupon.code})</span>
+              <span>-₹{order.coupon.discountAmount.toLocaleString("en-IN")}</span>
+            </div>
+          )}
           <div className="flex justify-between pt-2 text-base">
             <span className="text-ivory">Total</span>
             <span className="font-display text-gold">₹{order.total.toLocaleString("en-IN")}</span>
           </div>
         </div>
+        <div className="mt-4 border-t border-border pt-4 text-sm text-ivory/75">
+          <p>Payment Method: {order.paymentMethod}</p>
+          {order.payment && (
+            <p className="mt-1">
+              Payment Status: {order.payment.status}
+              {order.payment.paidAt && ` · Paid ${new Date(order.payment.paidAt).toLocaleDateString("en-IN")}`}
+            </p>
+          )}
+        </div>
       </Card>
 
-      <Button as={Link} to={PATHS.admin.orders} variant="ghost" className="mt-6 px-0">
+      <Button as={Link} to={PATHS.admin.orders} variant="ghost" className="mt-6 px-0 print:hidden">
         ← Back to Orders
       </Button>
     </div>

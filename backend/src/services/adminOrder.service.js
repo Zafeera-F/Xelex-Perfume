@@ -55,6 +55,7 @@ function toAdminDetail(order) {
     status: order.status,
     subtotal: Number(order.subtotal),
     shippingFee: Number(order.shippingFee),
+    coupon: order.couponCode ? { code: order.couponCode, discountAmount: Number(order.discountAmount) } : null,
     total: Number(order.total),
     paymentMethod: order.paymentMethod,
     createdAt: order.createdAt,

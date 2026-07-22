@@ -60,7 +60,7 @@ export default function AdminLayout() {
       {/* Mobile-only top bar — the sidebar is off-canvas below the md
           breakpoint, so this is the only way to get to it/see where you
           are. Hidden entirely on desktop, where the sidebar is static. */}
-      <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden print:hidden">
         <Logo compact />
         <button
           onClick={() => setMobileNavOpen(true)}
@@ -81,7 +81,7 @@ export default function AdminLayout() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-shrink-0 flex-col border-r border-border bg-background px-6 py-8 transition-transform duration-300 md:static md:z-auto md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-shrink-0 flex-col border-r border-border bg-background px-6 py-8 transition-transform duration-300 md:static md:z-auto md:translate-x-0 print:hidden ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
