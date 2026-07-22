@@ -11,6 +11,7 @@ import OrderConfirmation from "../components/checkout/OrderConfirmation";
 import { fadeInUp } from "../lib/animations";
 import { createOrder } from "../lib/orders";
 import { initiateRazorpayCheckout, verifyRazorpayPayment, loadRazorpayCheckoutScript } from "../lib/payments";
+import { validateCoupon } from "../lib/coupons";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { PATHS } from "../routes/paths";
@@ -35,6 +36,30 @@ export default function Checkout() {
   const [placedOrder, setPlacedOrder] = useState(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState("");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+
+  async function handleApplyCoupon() {
+    setCouponError("");
+    setIsApplyingCoupon(true);
+    try {
+      const result = await validateCoupon(couponCode, subtotal);
+      setAppliedCoupon(result);
+    } catch (err) {
+      setCouponError(err.message || "Unable to apply this coupon.");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+  }
 
   // Prefill from the account once it's known — the only fields the schema
   // has anywhere else to draw from.
@@ -81,11 +106,18 @@ export default function Checkout() {
       pincode: shipping.pincode,
     };
 
+    const couponCodeForOrder = appliedCoupon?.code;
+
     if (paymentMethod === "cod") {
       // Unchanged from before Razorpay was wired in — COD has no
       // "payment" to verify, so the order is created immediately.
       try {
-        const order = await createOrder({ items, shipping: shippingPayload, paymentMethod: "COD" });
+        const order = await createOrder({
+          items,
+          shipping: shippingPayload,
+          paymentMethod: "COD",
+          couponCode: couponCodeForOrder,
+        });
         setPlacedOrder(order);
         clearCart();
       } catch (err) {
@@ -104,6 +136,7 @@ export default function Checkout() {
       const { razorpayOrderId, amount, currency, keyId } = await initiateRazorpayCheckout({
         items,
         shipping: shippingPayload,
+        couponCode: couponCodeForOrder,
       });
       await loadRazorpayCheckoutScript();
 
@@ -211,6 +244,13 @@ export default function Checkout() {
           <OrderSummary
             subtotal={subtotal}
             itemCount={itemCount}
+            couponCode={couponCode}
+            onCouponCodeChange={setCouponCode}
+            onApplyCoupon={handleApplyCoupon}
+            onRemoveCoupon={handleRemoveCoupon}
+            appliedCoupon={appliedCoupon}
+            couponError={couponError}
+            isApplyingCoupon={isApplyingCoupon}
             footer={
               <Button type="submit" variant="primary" size="lg" className="mt-6 w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Placing Order…" : "Place Order"}

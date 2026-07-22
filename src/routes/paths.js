@@ -42,5 +42,9 @@ export const PATHS = {
     newHeroSlide: "/admin/settings/hero-slides/new",
     editHeroSlidePath: "/admin/settings/hero-slides/:id/edit",
     editHeroSlide: (id) => `/admin/settings/hero-slides/${id}/edit`,
+    coupons: "/admin/coupons",
+    newCoupon: "/admin/coupons/new",
+    editCouponPath: "/admin/coupons/:id/edit",
+    editCoupon: (id) => `/admin/coupons/${id}/edit`,
   },
 };

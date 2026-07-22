@@ -2,10 +2,10 @@
 
 import { apiRequest } from "./api";
 
-export function createOrder({ items, shipping, paymentMethod }) {
+export function createOrder({ items, shipping, paymentMethod, couponCode }) {
   return apiRequest("/api/orders", {
     method: "POST",
-    body: { items, shipping, paymentMethod },
+    body: { items, shipping, paymentMethod, couponCode },
   }).then((data) => data.order);
 }
 

@@ -10,8 +10,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const initiateCheckout = asyncHandler(async (req, res) => {
-  const { items, shipping } = req.body;
-  const result = await paymentService.initiateCheckout(req.user.id, { items, shipping });
+  const { items, shipping, couponCode } = req.body;
+  const result = await paymentService.initiateCheckout(req.user.id, { items, shipping, couponCode });
   res.status(201).json(new ApiResponse("Checkout initiated", result));
 });
 

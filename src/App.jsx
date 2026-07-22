@@ -30,6 +30,8 @@ import AdminSubscribers from "./pages/admin/AdminSubscribers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminHeroSlideList from "./pages/admin/AdminHeroSlideList";
 import AdminHeroSlideForm from "./pages/admin/AdminHeroSlideForm";
+import AdminCouponList from "./pages/admin/AdminCouponList";
+import AdminCouponForm from "./pages/admin/AdminCouponForm";
 
 function App() {
   return (
@@ -129,6 +131,9 @@ function App() {
         <Route path="settings/hero-slides" element={<AdminHeroSlideList />} />
         <Route path="settings/hero-slides/new" element={<AdminHeroSlideForm />} />
         <Route path="settings/hero-slides/:id/edit" element={<AdminHeroSlideForm />} />
+        <Route path="coupons" element={<AdminCouponList />} />
+        <Route path="coupons/new" element={<AdminCouponForm />} />
+        <Route path="coupons/:id/edit" element={<AdminCouponForm />} />
       </Route>
     </Routes>
   );

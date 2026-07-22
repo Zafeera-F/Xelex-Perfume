@@ -16,6 +16,7 @@ export const initiateCheckoutValidator = [
   body("shipping.city").trim().notEmpty().withMessage("City is required"),
   body("shipping.state").trim().notEmpty().withMessage("State is required"),
   body("shipping.pincode").trim().notEmpty().withMessage("Pincode is required"),
+  body("couponCode").optional({ checkFalsy: true }).trim(),
 ];
 
 export const verifyPaymentValidator = [

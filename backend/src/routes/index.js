@@ -26,6 +26,8 @@ import newsletterRoutes from "./newsletter.routes.js";
 import adminNewsletterRoutes from "./adminNewsletter.routes.js";
 import heroSlideRoutes from "./heroSlide.routes.js";
 import adminHeroSlideRoutes from "./adminHeroSlide.routes.js";
+import couponRoutes from "./coupon.routes.js";
+import adminCouponRoutes from "./adminCoupon.routes.js";
 
 const router = Router();
 
@@ -54,5 +56,7 @@ router.use("/api/newsletter", newsletterRoutes);
 router.use("/api/admin/newsletter", adminNewsletterRoutes);
 router.use("/api/hero-slides", heroSlideRoutes);
 router.use("/api/admin/hero-slides", adminHeroSlideRoutes);
+router.use("/api/coupons", couponRoutes);
+router.use("/api/admin/coupons", adminCouponRoutes);
 
 export default router;

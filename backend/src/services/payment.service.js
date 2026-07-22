@@ -15,6 +15,7 @@ import { paymentIntentRepository } from "../repositories/paymentIntent.repositor
 import { productRepository } from "../repositories/product.repository.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { buildOrderInTransaction } from "./order.service.js";
+import { couponService } from "./coupon.service.js";
 import { emailService } from "./email.service.js";
 import { smsService } from "./sms.service.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -58,7 +59,8 @@ async function finalizePaidIntent(intent, transactionId) {
       throw new ApiError(409, "This payment is still being processed. Check your order history shortly.");
     }
 
-    const { items, shipping } = intent.cartSnapshot;
+    const { items, shipping, couponCode, discountAmount } = intent.cartSnapshot;
+    const coupon = couponCode ? { code: couponCode, mode: "trust", lockedDiscountAmount: discountAmount } : null;
     const newOrder = await buildOrderInTransaction(tx, intent.userId, {
       items,
       shipping,
@@ -66,6 +68,7 @@ async function finalizePaidIntent(intent, transactionId) {
       paymentStatus: "SUCCESS",
       transactionId,
       paidAt: new Date(),
+      coupon,
     });
 
     await paymentIntentRepository.attachOrder(intent.id, newOrder.id, tx);
@@ -90,7 +93,7 @@ async function finalizePaidIntent(intent, transactionId) {
 }
 
 export const paymentService = {
-  async initiateCheckout(userId, { items, shipping }) {
+  async initiateCheckout(userId, { items, shipping, couponCode }) {
     requireConfigured();
 
     // Validate stock/price up front — never trust client-submitted prices,
@@ -113,7 +116,19 @@ export const paymentService = {
     }
 
     const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
-    const total = subtotal + shippingFee;
+
+    // Re-validated here (not just trusted from the customer's earlier
+    // real-time check) in case the code expired/got deactivated/hit its
+    // usage limit in the time between validating it and clicking Pay.
+    // Never claims usage — that only happens once the order is actually
+    // built, at finalize time.
+    let discountAmount = 0;
+    if (couponCode) {
+      const result = await couponService.validate(couponCode, subtotal);
+      discountAmount = result.discountAmount;
+    }
+
+    const total = subtotal + shippingFee - discountAmount;
 
     // The razorpay SDK's own error handling is fragile: on a network-level
     // failure (timeout, DNS blip, connection reset — no HTTP response at
@@ -139,7 +154,7 @@ export const paymentService = {
       userId,
       gatewayOrderId: gatewayOrder.id,
       amount: total,
-      cartSnapshot: { items, shipping },
+      cartSnapshot: { items, shipping, couponCode: couponCode || null, discountAmount },
     });
 
     return {

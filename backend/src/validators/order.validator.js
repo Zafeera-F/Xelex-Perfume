@@ -16,4 +16,5 @@ export const createOrderValidator = [
   body("shipping.pincode").trim().notEmpty().withMessage("Pincode is required"),
 
   body("paymentMethod").isIn(["UPI", "COD"]).withMessage("Invalid payment method"),
+  body("couponCode").optional({ checkFalsy: true }).trim(),
 ];

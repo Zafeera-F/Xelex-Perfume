@@ -6,8 +6,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const createOrder = asyncHandler(async (req, res) => {
-  const { items, shipping, paymentMethod } = req.body;
-  const order = await orderService.createOrder(req.user.id, { items, shipping, paymentMethod });
+  const { items, shipping, paymentMethod, couponCode } = req.body;
+  const order = await orderService.createOrder(req.user.id, { items, shipping, paymentMethod, couponCode });
   res.status(201).json(new ApiResponse("Order placed successfully", { order }));
 });
 

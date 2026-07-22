@@ -55,6 +55,11 @@ enum PaymentIntentStatus {
   FAILED
 }
 
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED
+}
+
 // -----------------------------------------------------------------------------
 // USERS
 // -----------------------------------------------------------------------------
@@ -342,6 +347,15 @@ model Order {
   status         OrderStatus   @default(PENDING)
   subtotal       Decimal       @db.Decimal(10, 2)
   shippingFee    Decimal       @db.Decimal(10, 2) @default(0)
+  // couponId is a traceability link only, nullable + SetNull so a coupon can
+  // be hard-deleted later without breaking historical orders. couponCode/
+  // discountAmount are the actual source of truth for what this order got —
+  // a snapshot that survives the coupon being renamed, changed, or deleted,
+  // same philosophy as OrderItem.productName/unitPrice below.
+  couponId       String?       @db.Uuid
+  coupon         Coupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode     String?
+  discountAmount Decimal       @db.Decimal(10, 2) @default(0)
   total          Decimal       @db.Decimal(10, 2)
   paymentMethod  PaymentMethod
   createdAt      DateTime      @default(now())
@@ -479,4 +493,34 @@ model HeroSlide {
 
   @@index([isEnabled])
   @@map("hero_slides")
+}
+
+// -----------------------------------------------------------------------------
+// COUPONS
+// -----------------------------------------------------------------------------
+
+// No soft delete — "delete" here means a real delete, distinct from the
+// `isActive` toggle (which is how admins deactivate a coupon without losing
+// it). A hard delete is safe because Order.couponId is nullable with
+// onDelete: SetNull — historical orders keep their couponCode/discountAmount
+// snapshot regardless of what happens to this row afterward.
+model Coupon {
+  id                String             @id @default(uuid()) @db.Uuid
+  code              String             @unique
+  description       String?
+  discountType      CouponDiscountType
+  discountValue     Decimal            @db.Decimal(10, 2)
+  minOrderAmount    Decimal?           @db.Decimal(10, 2)
+  maxDiscountAmount Decimal?           @db.Decimal(10, 2) // caps a PERCENTAGE discount's rupee value
+  expiresAt         DateTime?
+  usageLimit        Int?               // null = unlimited
+  usedCount         Int                @default(0)
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  orders            Order[]
+
+  @@index([code])
+  @@map("coupons")
 }

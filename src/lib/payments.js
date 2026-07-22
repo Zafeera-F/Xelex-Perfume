@@ -4,10 +4,10 @@
 
 import { apiRequest } from "./api";
 
-export function initiateRazorpayCheckout({ items, shipping }) {
+export function initiateRazorpayCheckout({ items, shipping, couponCode }) {
   return apiRequest("/api/payments/razorpay/checkout", {
     method: "POST",
-    body: { items, shipping },
+    body: { items, shipping, couponCode },
   });
 }
 
