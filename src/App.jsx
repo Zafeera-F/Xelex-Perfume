@@ -27,6 +27,9 @@ import AdminCustomerList from "./pages/admin/AdminCustomerList";
 import AdminCustomerDetail from "./pages/admin/AdminCustomerDetail";
 import AdminReviewList from "./pages/admin/AdminReviewList";
 import AdminSubscribers from "./pages/admin/AdminSubscribers";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminHeroSlideList from "./pages/admin/AdminHeroSlideList";
+import AdminHeroSlideForm from "./pages/admin/AdminHeroSlideForm";
 
 function App() {
   return (
@@ -122,6 +125,10 @@ function App() {
         <Route path="customers/:id" element={<AdminCustomerDetail />} />
         <Route path="reviews" element={<AdminReviewList />} />
         <Route path="subscribers" element={<AdminSubscribers />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="settings/hero-slides" element={<AdminHeroSlideList />} />
+        <Route path="settings/hero-slides/new" element={<AdminHeroSlideForm />} />
+        <Route path="settings/hero-slides/:id/edit" element={<AdminHeroSlideForm />} />
       </Route>
     </Routes>
   );

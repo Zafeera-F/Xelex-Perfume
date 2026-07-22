@@ -24,6 +24,8 @@ import adminDashboardRoutes from "./adminDashboard.routes.js";
 import adminCustomerRoutes from "./adminCustomer.routes.js";
 import newsletterRoutes from "./newsletter.routes.js";
 import adminNewsletterRoutes from "./adminNewsletter.routes.js";
+import heroSlideRoutes from "./heroSlide.routes.js";
+import adminHeroSlideRoutes from "./adminHeroSlide.routes.js";
 
 const router = Router();
 
@@ -50,5 +52,7 @@ router.use("/api/admin/dashboard", adminDashboardRoutes);
 router.use("/api/admin/customers", adminCustomerRoutes);
 router.use("/api/newsletter", newsletterRoutes);
 router.use("/api/admin/newsletter", adminNewsletterRoutes);
+router.use("/api/hero-slides", heroSlideRoutes);
+router.use("/api/admin/hero-slides", adminHeroSlideRoutes);
 
 export default router;

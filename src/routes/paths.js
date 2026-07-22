@@ -37,5 +37,10 @@ export const PATHS = {
     customerDetail: (id) => `/admin/customers/${id}`,
     reviews: "/admin/reviews",
     subscribers: "/admin/subscribers",
+    settings: "/admin/settings",
+    heroSlides: "/admin/settings/hero-slides",
+    newHeroSlide: "/admin/settings/hero-slides/new",
+    editHeroSlidePath: "/admin/settings/hero-slides/:id/edit",
+    editHeroSlide: (id) => `/admin/settings/hero-slides/${id}/edit`,
   },
 };

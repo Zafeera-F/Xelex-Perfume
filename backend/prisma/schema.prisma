@@ -457,3 +457,26 @@ model NewsletterSubscriber {
 
   @@map("newsletter_subscribers")
 }
+
+// -----------------------------------------------------------------------------
+// HERO SLIDER
+// -----------------------------------------------------------------------------
+
+// No soft delete — purely presentational marketing content with nothing
+// else referencing it (unlike Product/Category), so a real delete is safe.
+// Same reasoning as ProductImage.
+model HeroSlide {
+  id          String   @id @default(uuid()) @db.Uuid
+  imageUrl    String
+  heading     String
+  description String?
+  buttonText  String?
+  buttonLink  String?
+  sortOrder   Int      @default(0)
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isEnabled])
+  @@map("hero_slides")
+}

@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { uploadImage } from "../controllers/upload.controller.js";
-import { upload } from "../middlewares/upload.js";
+import { uploadImage, uploadHeroSlideImage } from "../controllers/upload.controller.js";
+import { upload, heroSlideUpload } from "../middlewares/upload.js";
 import { requireAdmin } from "../middlewares/admin.middleware.js";
 import { ApiError } from "../utils/ApiError.js";
 
@@ -17,6 +17,14 @@ function handleSingleImage(req, res, next) {
   });
 }
 
+function handleHeroSlideImage(req, res, next) {
+  heroSlideUpload.single("image")(req, res, (err) => {
+    if (err) return next(new ApiError(422, err.message || "Image upload failed"));
+    next();
+  });
+}
+
 router.post("/", requireAdmin, handleSingleImage, uploadImage);
+router.post("/hero-slides", requireAdmin, handleHeroSlideImage, uploadHeroSlideImage);
 
 export default router;

@@ -1,7 +1,7 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import Button from "../ui/Button";
-import { fadeInUp, staggerContainer } from "../../lib/animations";
+import HeroSlider from "./HeroSlider";
+import { getHeroSlides } from "../../lib/heroSlides";
 import { SECTION_IMAGES } from "../../data/placeholderData";
 import { PATHS } from "../../routes/paths";
 
@@ -16,7 +16,37 @@ const PARTICLES = [
   { top: "80%", left: "55%", size: 4, delay: 2.1 },
 ];
 
+// Used whenever there are no admin-configured slides yet, or the slides
+// fetch fails — the homepage must never show a blank hero section.
+const DEFAULT_SLIDE = {
+  id: "default",
+  imageUrl: SECTION_IMAGES.hero,
+  heading: "Luxury Within Reach",
+  description: "Inspired by the world's finest fragrances. Crafted for those who appreciate elegance.",
+  buttonText: "Shop Now",
+  buttonLink: PATHS.shop,
+};
+
 export default function Hero() {
+  const [slides, setSlides] = useState([DEFAULT_SLIDE]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getHeroSlides()
+      .then((fetched) => {
+        if (cancelled) return;
+        if (fetched.length > 0) setSlides(fetched);
+      })
+      .catch(() => {
+        // Already showing DEFAULT_SLIDE — nothing more to do.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section className="relative overflow-hidden bg-background">
       {/* Ambient gradient wash */}
@@ -33,41 +63,8 @@ export default function Hero() {
         />
       ))}
 
-      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 py-14 md:grid-cols-2 md:px-10 md:py-20">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer(0.15)}
-          className="order-2 md:order-1"
-        >
-          <motion.p variants={fadeInUp} className="mb-4 text-xs uppercase tracking-[0.3em] text-gold">
-            XeleX Perfume
-          </motion.p>
-          <motion.h1 variants={fadeInUp} className="font-display text-4xl leading-tight text-ivory sm:text-5xl md:text-6xl">
-            Luxury Within Reach
-          </motion.h1>
-          <motion.p variants={fadeInUp} className="mt-6 max-w-md text-base leading-relaxed text-ivory/75">
-            Inspired by the world's finest fragrances. Crafted for those who
-            appreciate elegance.
-          </motion.p>
-          <motion.div variants={fadeInUp} className="mt-10">
-            <Button as={Link} to={PATHS.shop} variant="primary" size="lg">Shop Now</Button>
-          </motion.div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="relative order-1 md:order-2"
-        >
-          <div className="absolute inset-0 -z-10 rounded-full bg-gold/10 blur-3xl" />
-          <img
-            src={SECTION_IMAGES.hero}
-            alt="Featured XeleX fragrance"
-            className="mx-auto h-[380px] w-full max-w-md rounded-[var(--radius-card)] object-cover shadow-[var(--shadow-card)] md:h-[520px]"
-          />
-        </motion.div>
+      <div className="relative mx-auto max-w-7xl px-6 py-14 md:px-10 md:py-20">
+        <HeroSlider slides={slides} />
       </div>
     </section>
   );
