@@ -6,6 +6,7 @@ import {
   refresh,
   logout,
   getProfile,
+  updateProfile,
   changePassword,
   setupMfa,
   confirmMfaSetup,
@@ -14,6 +15,7 @@ import {
 import {
   registerValidator,
   loginValidator,
+  updateProfileValidator,
   changePasswordValidator,
   mfaCodeValidator,
   disableMfaValidator,
@@ -32,6 +34,7 @@ router.post("/mfa/login-verify", authLimiter, mfaCodeValidator, validate, verify
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.get("/profile", requireAuth, getProfile);
+router.patch("/profile", requireAuth, updateProfileValidator, validate, updateProfile);
 router.patch("/change-password", requireAuth, authLimiter, changePasswordValidator, validate, changePassword);
 router.post("/mfa/setup", requireAuth, setupMfa);
 router.post("/mfa/verify-setup", requireAuth, authLimiter, mfaCodeValidator, validate, confirmMfaSetup);

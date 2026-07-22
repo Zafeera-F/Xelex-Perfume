@@ -37,10 +37,10 @@ export function AuthProvider({ children }) {
   // call to verifyMfaLogin with a TOTP code. Callers must check
   // `mfaRequired` on the result rather than assuming login() always signs
   // the user in.
-  async function login({ email, password }) {
+  async function login({ identifier, password }) {
     const result = await apiRequest("/api/auth/login", {
       method: "POST",
-      body: { email, password },
+      body: { identifier, password },
     });
     if (result.mfaRequired) {
       return { mfaRequired: true };
@@ -76,6 +76,15 @@ export function AuthProvider({ children }) {
     setStatus("guest");
   }
 
+  async function updateProfile(fields) {
+    const { user: updatedUser } = await apiRequest("/api/auth/profile", {
+      method: "PATCH",
+      body: fields,
+    });
+    setUser(updatedUser);
+    return updatedUser;
+  }
+
   async function changePassword({ currentPassword, newPassword }) {
     await apiRequest("/api/auth/change-password", {
       method: "PATCH",
@@ -107,6 +116,7 @@ export function AuthProvider({ children }) {
     verifyMfaLogin,
     register,
     logout,
+    updateProfile,
     changePassword,
     setupMfa,
     confirmMfaSetup,

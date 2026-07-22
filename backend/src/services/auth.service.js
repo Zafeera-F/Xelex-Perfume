@@ -75,12 +75,20 @@ export const authService = {
     return { user: sanitizeUser(user), ...tokens };
   },
 
-  async login({ email, password }) {
-    const user = await userRepository.findByEmail(email);
+  // `identifier` is either an email or a phone number — `registerValidator`
+  // guarantees every stored email contains "@" and every stored phone
+  // (isMobilePhone-validated) never does, so this is an unambiguous,
+  // single-lookup routing (no wasted double-query trying one then the
+  // other on every wrong-identifier attempt).
+  async login({ identifier, password }) {
+    const isEmail = identifier.includes("@");
+    const user = isEmail
+      ? await userRepository.findByEmail(identifier)
+      : await userRepository.findByPhone(identifier);
 
     // Deliberately identical error for "no such user" and "wrong password" —
     // a different message for each would let an attacker enumerate which
-    // emails have accounts.
+    // emails/phone numbers have accounts.
     if (!user) {
       throw new ApiError(401, "Invalid email or password");
     }
@@ -216,6 +224,36 @@ export const authService = {
     }
 
     return sanitizeUser(user);
+  },
+
+  // Self-service edit of name/email/phone from the Profile page. Only
+  // defined fields are passed to the repository, so a request that only
+  // sends `phone` (say) leaves fullName/email untouched.
+  async updateProfile(userId, { fullName, email, phone }) {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // An empty string is normalized to null (clearing the phone), never
+    // stored as "" — phone is a unique column, and a stray "" would
+    // collide with any other account that also clears its phone this way.
+    const fields = {
+      ...(fullName !== undefined && { fullName }),
+      ...(email !== undefined && { email }),
+      ...(phone !== undefined && { phone: phone || null }),
+    };
+
+    try {
+      const updated = await userRepository.updateProfile(userId, fields);
+      return sanitizeUser(updated);
+    } catch (err) {
+      if (err.code === "P2002") {
+        const field = err.meta?.target?.includes("phone") ? "phone number" : "email";
+        throw new ApiError(409, `An account with this ${field} already exists`);
+      }
+      throw err;
+    }
   },
 
   async changePassword(userId, { currentPassword, newPassword }) {

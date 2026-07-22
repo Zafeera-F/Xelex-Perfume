@@ -13,7 +13,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [values, setValues] = useState({ email: "", password: "" });
+  const [values, setValues] = useState({ identifier: "", password: "" });
   const [mfaRequired, setMfaRequired] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -110,14 +110,14 @@ export default function Login() {
               </p>
             )}
 
-            <Field label="Email Address">
+            <Field label="Email or Mobile Number">
               <Input
                 required
-                type="email"
-                autoComplete="email"
-                value={values.email}
-                onChange={handleChange("email")}
-                placeholder="you@example.com"
+                type="text"
+                autoComplete="username"
+                value={values.identifier}
+                onChange={handleChange("identifier")}
+                placeholder="you@example.com or 98765 43210"
               />
             </Field>
 

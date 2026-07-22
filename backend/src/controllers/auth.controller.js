@@ -31,8 +31,8 @@ export const register = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  const result = await authService.login({ email, password });
+  const { identifier, password } = req.body;
+  const result = await authService.login({ identifier, password });
 
   // MFA-enabled account: no real session yet, just the short-lived
   // pending cookie — the frontend must show the code-entry step and call
@@ -88,6 +88,12 @@ export const logout = asyncHandler(async (req, res) => {
 export const getProfile = asyncHandler(async (req, res) => {
   const user = await authService.getProfile(req.user.id);
   res.status(200).json(new ApiResponse("Profile fetched successfully", { user }));
+});
+
+export const updateProfile = asyncHandler(async (req, res) => {
+  const { fullName, email, phone } = req.body;
+  const user = await authService.updateProfile(req.user.id, { fullName, email, phone });
+  res.status(200).json(new ApiResponse("Profile updated successfully", { user }));
 });
 
 export const changePassword = asyncHandler(async (req, res) => {

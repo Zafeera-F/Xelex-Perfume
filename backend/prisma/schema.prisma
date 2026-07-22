@@ -71,7 +71,13 @@ model User {
   fullName      String
   email         String    @unique
   passwordHash  String
-  phone         String?
+  // Unique so a phone number can double as a login identifier alongside
+  // email (see auth.service.js's login) — Postgres allows multiple NULLs
+  // under a unique constraint, so accounts that never set a phone are
+  // unaffected. Pre-flight duplicate check run against production data
+  // before this migration; any collisions found were resolved by keeping
+  // each duplicate group's oldest account's phone and clearing the rest.
+  phone         String?   @unique
   emailVerifiedAt DateTime?
   mfaSecret     String?   // set once enrollment starts, but mfaEnabled stays false until the first code is confirmed — see services/auth.service.js
   mfaEnabled    Boolean   @default(false)

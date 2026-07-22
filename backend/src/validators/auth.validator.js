@@ -24,9 +24,20 @@ export const registerValidator = [
     .withMessage("Phone number is invalid"),
 ];
 
+// Deliberately not format-validated as email-or-phone here — replicating
+// isEmail()/isMobilePhone("any") OR-logic in the validator layer would be
+// redundant work auth.service.js's lookup-then-anti-enumeration-error
+// already handles correctly (a malformed identifier just resolves to "no
+// such user" -> the same generic 401).
 export const loginValidator = [
-  body("email").trim().isEmail().withMessage("A valid email is required").normalizeEmail(),
+  body("identifier").trim().notEmpty().withMessage("Email or mobile number is required"),
   body("password").notEmpty().withMessage("Password is required"),
+];
+
+export const updateProfileValidator = [
+  body("fullName").optional().trim().notEmpty().withMessage("Full name cannot be empty"),
+  body("email").optional().trim().isEmail().withMessage("A valid email is required").normalizeEmail(),
+  body("phone").optional({ checkFalsy: true }).isMobilePhone("any").withMessage("Phone number is invalid"),
 ];
 
 export const changePasswordValidator = [

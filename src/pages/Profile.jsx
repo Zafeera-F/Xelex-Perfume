@@ -29,9 +29,15 @@ const STATUS_TONE = {
 };
 
 export default function Profile() {
-  const { user, status, logout, changePassword, setupMfa, confirmMfaSetup, disableMfa } = useAuth();
+  const { user, status, logout, updateProfile, changePassword, setupMfa, confirmMfaSetup, disableMfa } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState(null);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState("");
@@ -63,6 +69,37 @@ export default function Profile() {
 
   if (status === "guest") {
     return <Navigate to={PATHS.login} state={{ from: location.pathname }} replace />;
+  }
+
+  function handleStartEditProfile() {
+    setProfileForm({ fullName: user.fullName, email: user.email, phone: user.phone || "" });
+    setProfileError("");
+    setProfileSuccess(false);
+    setIsEditingProfile(true);
+  }
+
+  function handleCancelEditProfile() {
+    setIsEditingProfile(false);
+    setProfileError("");
+  }
+
+  function handleProfileFieldChange(field) {
+    return (e) => setProfileForm({ ...profileForm, [field]: e.target.value });
+  }
+
+  async function handleProfileSubmit(e) {
+    e.preventDefault();
+    setProfileError("");
+    setIsSavingProfile(true);
+    try {
+      await updateProfile({ ...profileForm, phone: profileForm.phone || null });
+      setIsEditingProfile(false);
+      setProfileSuccess(true);
+    } catch (err) {
+      setProfileError(err.message || "Unable to update your details. Please try again.");
+    } finally {
+      setIsSavingProfile(false);
+    }
   }
 
   function handlePasswordChange(field) {
@@ -122,21 +159,67 @@ export default function Profile() {
 
       <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-2">
         <Card className="p-6" hoverable={false}>
-          <h2 className="mb-6 font-display text-lg text-ivory">Account Details</h2>
-          <dl className="space-y-4 text-sm">
-            <div>
-              <dt className="text-xs uppercase tracking-[0.15em] text-muted">Full Name</dt>
-              <dd className="mt-1 text-ivory">{user.fullName}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-[0.15em] text-muted">Email</dt>
-              <dd className="mt-1 text-ivory">{user.email}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-[0.15em] text-muted">Phone</dt>
-              <dd className="mt-1 text-ivory">{user.phone || "—"}</dd>
-            </div>
-          </dl>
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="font-display text-lg text-ivory">Account Details</h2>
+            {!isEditingProfile && (
+              <Button type="button" variant="ghost" size="sm" onClick={handleStartEditProfile}>
+                Edit
+              </Button>
+            )}
+          </div>
+
+          {profileError && (
+            <p className="mb-4 rounded-[var(--radius-card)] border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+              {profileError}
+            </p>
+          )}
+          {profileSuccess && !isEditingProfile && (
+            <p className="mb-4 rounded-[var(--radius-card)] border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-gold">
+              Account details updated successfully.
+            </p>
+          )}
+
+          {isEditingProfile ? (
+            <form onSubmit={handleProfileSubmit} className="space-y-4">
+              <Field label="Full Name">
+                <Input required value={profileForm.fullName} onChange={handleProfileFieldChange("fullName")} />
+              </Field>
+              <Field label="Email">
+                <Input required type="email" value={profileForm.email} onChange={handleProfileFieldChange("email")} />
+              </Field>
+              <Field label="Phone">
+                <Input
+                  type="tel"
+                  value={profileForm.phone}
+                  onChange={handleProfileFieldChange("phone")}
+                  placeholder="Add a mobile number"
+                />
+              </Field>
+              <div className="flex gap-3">
+                <Button type="submit" variant="outline" disabled={isSavingProfile}>
+                  {isSavingProfile ? "Saving…" : "Save"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={handleCancelEditProfile}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <dl className="space-y-4 text-sm">
+              <div>
+                <dt className="text-xs uppercase tracking-[0.15em] text-muted">Full Name</dt>
+                <dd className="mt-1 text-ivory">{user.fullName}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.15em] text-muted">Email</dt>
+                <dd className="mt-1 text-ivory">{user.email}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.15em] text-muted">Phone</dt>
+                <dd className="mt-1 text-ivory">{user.phone || "—"}</dd>
+              </div>
+            </dl>
+          )}
         </Card>
 
         <Card className="p-6" hoverable={false}>

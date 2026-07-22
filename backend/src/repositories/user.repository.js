@@ -20,6 +20,10 @@ export const userRepository = {
     return prisma.user.findFirst({ where: { id, deletedAt: null } });
   },
 
+  findByPhone(phone) {
+    return prisma.user.findFirst({ where: { phone, deletedAt: null } });
+  },
+
   create({ fullName, email, passwordHash, phone }) {
     return prisma.user.create({
       data: { fullName, email, passwordHash, phone },
@@ -31,6 +35,13 @@ export const userRepository = {
       where: { id },
       data: { passwordHash },
     });
+  },
+
+  // Only defined/non-undefined fields ever reach here (see
+  // auth.service.js's updateProfile), so this naturally supports a partial
+  // update of fullName/email/phone.
+  updateProfile(id, fields) {
+    return prisma.user.update({ where: { id }, data: fields });
   },
 
   // Enrollment starts here — the secret is stored, but mfaEnabled stays
