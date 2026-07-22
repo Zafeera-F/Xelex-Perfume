@@ -54,3 +54,12 @@ export const mfaCodeValidator = [
 export const disableMfaValidator = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
+
+export const requestOtpValidator = [
+  body("phone").trim().isMobilePhone("any").withMessage("A valid mobile number is required"),
+];
+
+export const verifyOtpValidator = [
+  body("phone").trim().isMobilePhone("any").withMessage("A valid mobile number is required"),
+  body("code").trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage("Enter the 6-digit code sent by SMS"),
+];

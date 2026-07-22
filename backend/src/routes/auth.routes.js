@@ -3,6 +3,8 @@ import {
   register,
   login,
   verifyMfaLogin,
+  requestPhoneOtp,
+  verifyPhoneOtp,
   refresh,
   logout,
   getProfile,
@@ -19,6 +21,8 @@ import {
   changePasswordValidator,
   mfaCodeValidator,
   disableMfaValidator,
+  requestOtpValidator,
+  verifyOtpValidator,
 } from "../validators/auth.validator.js";
 import { validate } from "../middlewares/validate.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
@@ -31,6 +35,12 @@ router.post("/login", authLimiter, loginValidator, validate, login);
 // Same strict limiter as login — brute-forcing a 6-digit TOTP code (1M
 // possibilities) is an even smaller search space than a password.
 router.post("/mfa/login-verify", authLimiter, mfaCodeValidator, validate, verifyMfaLogin);
+// No requireAuth on either — a phone login attempt has no session yet.
+// authLimiter is a second layer on top of requestPhoneOtp's own per-phone
+// cooldown (see auth.service.js), same "belt and suspenders" posture as
+// every other auth-adjacent route here.
+router.post("/otp/request", authLimiter, requestOtpValidator, validate, requestPhoneOtp);
+router.post("/otp/verify", authLimiter, verifyOtpValidator, validate, verifyPhoneOtp);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.get("/profile", requireAuth, getProfile);

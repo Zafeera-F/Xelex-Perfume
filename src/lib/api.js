@@ -32,10 +32,11 @@ export class ApiClientError extends Error {
 // Paths that must never trigger (or be treated as) a refresh-and-retry:
 // login/register have no session yet to refresh, refresh is the mechanism
 // itself (retrying it would loop), logout is about to tear the session
-// down anyway, and mfa/login-verify authenticates via the short-lived
-// mfa-pending cookie rather than the access token, so a 401 there means
-// "wrong code," not "expired token" — there's no access token to refresh.
-const NO_REFRESH_PATTERN = /\/auth\/(login|register|refresh|logout|mfa\/login-verify)$/;
+// down anyway, and mfa/login-verify and otp/(request|verify) authenticate
+// via their own short-lived pending state rather than the access token, so
+// a 401 there means "wrong code" (or similar), not "expired token" — there's
+// no access token to refresh in any of these.
+const NO_REFRESH_PATTERN = /\/auth\/(login|register|refresh|logout|mfa\/login-verify|otp\/(request|verify))$/;
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 

@@ -5,10 +5,13 @@
 import bcrypt from "bcrypt";
 import { userRepository } from "../repositories/user.repository.js";
 import { refreshTokenRepository } from "../repositories/refreshToken.repository.js";
+import { phoneOtpRepository } from "../repositories/phoneOtp.repository.js";
 import { ApiError } from "../utils/ApiError.js";
 import { signToken, verifyToken } from "../utils/jwt.js";
 import { generateRefreshToken, hashRefreshToken, REFRESH_TOKEN_EXPIRES_IN_MS } from "../utils/refreshToken.js";
 import { generateMfaSecret, verifyMfaCode, generateMfaQrCode } from "../utils/mfa.js";
+import { generateOtp, hashOtp, OTP_EXPIRES_IN_MS, OTP_RESEND_COOLDOWN_MS, MAX_OTP_ATTEMPTS } from "../utils/otp.js";
+import { smsService } from "./sms.service.js";
 
 // 12 is the current recommended minimum for bcrypt (10 was the older
 // default) — configurable via env in case infra constraints call for a
@@ -75,20 +78,23 @@ export const authService = {
     return { user: sanitizeUser(user), ...tokens };
   },
 
-  // `identifier` is either an email or a phone number — `registerValidator`
-  // guarantees every stored email contains "@" and every stored phone
-  // (isMobilePhone-validated) never does, so this is an unambiguous,
-  // single-lookup routing (no wasted double-query trying one then the
-  // other on every wrong-identifier attempt).
+  // `identifier` must be an email — phone accounts sign in via
+  // requestPhoneOtp/verifyPhoneOtp instead (see below). This isn't an
+  // anti-enumeration concern (it reveals which *method* is valid, not
+  // which accounts exist), so a specific, helpful message is fine here.
   async login({ identifier, password }) {
-    const isEmail = identifier.includes("@");
-    const user = isEmail
-      ? await userRepository.findByEmail(identifier)
-      : await userRepository.findByPhone(identifier);
+    if (!identifier.includes("@")) {
+      throw new ApiError(
+        400,
+        'Phone accounts sign in with a one-time code sent by SMS. Use "Sign in with Phone" instead.'
+      );
+    }
+
+    const user = await userRepository.findByEmail(identifier);
 
     // Deliberately identical error for "no such user" and "wrong password" —
     // a different message for each would let an attacker enumerate which
-    // emails/phone numbers have accounts.
+    // emails have accounts.
     if (!user) {
       throw new ApiError(401, "Invalid email or password");
     }
@@ -136,6 +142,60 @@ export const authService = {
     const isValidCode = await verifyMfaCode(user.mfaSecret, code);
     if (!isValidCode) {
       throw new ApiError(401, "Invalid verification code");
+    }
+
+    const tokens = await issueTokens(user.id);
+    return { user: sanitizeUser(user), ...tokens };
+  },
+
+  // Always creates a PhoneOtp row and always responds the same way,
+  // whether or not `phone` belongs to a real account — the SMS itself is
+  // the only part that's conditional. A naive "only create a row if the
+  // account exists" design would leak account existence through the
+  // cooldown check below (a real account's second rapid request hits the
+  // cooldown; a fake number's never would), so the cooldown and response
+  // must behave identically either way.
+  async requestPhoneOtp(phone) {
+    const existing = await phoneOtpRepository.findLatestByPhone(phone);
+    if (existing && !existing.consumedAt && Date.now() - existing.createdAt.getTime() < OTP_RESEND_COOLDOWN_MS) {
+      throw new ApiError(429, "Please wait before requesting another code");
+    }
+
+    const code = generateOtp();
+    await phoneOtpRepository.create({
+      phone,
+      codeHash: hashOtp(code),
+      expiresAt: new Date(Date.now() + OTP_EXPIRES_IN_MS),
+    });
+
+    const user = await userRepository.findByPhone(phone);
+    if (user) {
+      smsService.sendOtpSms(phone, code);
+    }
+
+    return { message: "If this number is registered, a verification code has been sent." };
+  },
+
+  async verifyPhoneOtp(phone, code) {
+    const otp = await phoneOtpRepository.findLatestByPhone(phone);
+
+    if (!otp || otp.consumedAt || otp.expiresAt < new Date() || otp.attempts >= MAX_OTP_ATTEMPTS) {
+      throw new ApiError(401, "Invalid or expired code");
+    }
+
+    if (hashOtp(code) !== otp.codeHash) {
+      await phoneOtpRepository.incrementAttempts(otp.id);
+      throw new ApiError(401, "Invalid or expired code");
+    }
+
+    await phoneOtpRepository.markConsumed(otp.id);
+
+    // The code matched, but this guards the edge case of a code that was
+    // (implausibly) guessed for a phone with no real account — never issue
+    // a session for an account that doesn't exist.
+    const user = await userRepository.findByPhone(phone);
+    if (!user) {
+      throw new ApiError(401, "Invalid or expired code");
     }
 
     const tokens = await issueTokens(user.id);

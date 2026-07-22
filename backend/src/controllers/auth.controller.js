@@ -60,6 +60,22 @@ export const verifyMfaLogin = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse("Logged in successfully", { user }));
 });
 
+export const requestPhoneOtp = asyncHandler(async (req, res) => {
+  const { phone } = req.body;
+  const result = await authService.requestPhoneOtp(phone);
+  res.status(200).json(new ApiResponse(result.message));
+});
+
+export const verifyPhoneOtp = asyncHandler(async (req, res) => {
+  const { phone, code } = req.body;
+  const { user, accessToken, refreshToken } = await authService.verifyPhoneOtp(phone, code);
+
+  setAuthCookie(res, accessToken);
+  setRefreshCookie(res, refreshToken);
+  setCsrfCookie(res, generateCsrfToken());
+  res.status(200).json(new ApiResponse("Logged in successfully", { user }));
+});
+
 // No requireAuth — by the time the access token has expired, requireAuth
 // would already reject the request. Trust is entirely in the refresh
 // token cookie's own validity (checked in authService.refresh), the same

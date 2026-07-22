@@ -50,6 +50,26 @@ export function AuthProvider({ children }) {
     return { mfaRequired: false, user: result.user };
   }
 
+  // Step 1 of phone login — sends an SMS code. Always resolves the same
+  // way regardless of whether the phone belongs to a real account (see
+  // auth.service.js's requestPhoneOtp for why), so there's nothing to
+  // branch on here beyond a thrown error (e.g. the resend cooldown).
+  async function requestPhoneOtp(phone) {
+    await apiRequest("/api/auth/otp/request", { method: "POST", body: { phone } });
+  }
+
+  // Step 2 — verifying the code signs the user in directly, same session
+  // shape as login()/verifyMfaLogin().
+  async function verifyPhoneOtp(phone, code) {
+    const { user: loggedInUser } = await apiRequest("/api/auth/otp/verify", {
+      method: "POST",
+      body: { phone, code },
+    });
+    setUser(loggedInUser);
+    setStatus("authenticated");
+    return loggedInUser;
+  }
+
   async function verifyMfaLogin(code) {
     const { user: loggedInUser } = await apiRequest("/api/auth/mfa/login-verify", {
       method: "POST",
@@ -114,6 +134,8 @@ export function AuthProvider({ children }) {
     status,
     login,
     verifyMfaLogin,
+    requestPhoneOtp,
+    verifyPhoneOtp,
     register,
     logout,
     updateProfile,

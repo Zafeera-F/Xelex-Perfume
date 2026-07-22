@@ -105,4 +105,12 @@ export const smsService = {
       variables: { var1: order.orderNumber },
     });
   },
+
+  sendOtpSms(phone, code) {
+    void sendSmsWithRetry({
+      to: phone,
+      templateId: MSG91_TEMPLATES.OTP_LOGIN,
+      variables: { var1: code },
+    });
+  },
 };

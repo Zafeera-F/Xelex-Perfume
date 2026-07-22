@@ -97,6 +97,25 @@ model User {
   @@map("users")
 }
 
+// Backs phone-number OTP login. No relation to User — looked up by phone
+// string at both request and verify time, since a row must be created (and
+// a cooldown enforced) identically whether or not a matching account
+// exists, to avoid leaking account existence through the cooldown itself
+// (see auth.service.js's requestPhoneOtp). Only the SHA-256 hash of the
+// code is stored, same reasoning as RefreshToken below.
+model PhoneOtp {
+  id         String    @id @default(uuid()) @db.Uuid
+  phone      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone])
+  @@map("phone_otps")
+}
+
 // A revocable, DB-backed counterpart to the short-lived access token JWT —
 // see backend/src/utils/jwt.js for why access tokens alone (7-day expiry,
 // no revocation path) weren't enough. Only the SHA-256 hash of the raw
