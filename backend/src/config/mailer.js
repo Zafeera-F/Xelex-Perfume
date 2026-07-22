@@ -13,7 +13,7 @@ const SMTP_PORT = process.env.SMTP_PORT;
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 
-export const SMTP_FROM = process.env.SMTP_FROM || "XeleX Perfumes <no-reply@xelexperfumes.com>";
+export const SMTP_FROM = process.env.SMTP_FROM || "XeleX Perfume <no-reply@xelexperfumes.com>";
 
 export const isMailerConfigured = Boolean(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS);
 

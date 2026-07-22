@@ -35,10 +35,16 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 // mfa/setup, mfa/verify-setup, and mfa/disable are deliberately NOT
 // excluded — those mutate an already-authenticated session and get the
 // same CSRF protection as everything else.
+//
+// /api/newsletter/subscribe is also excluded — it's a public, unauthenticated
+// mutation with no session/CSRF cookie to have been issued yet (the CSRF
+// cookie is only ever set alongside a real login/register/MFA-verify), same
+// reasoning as the auth routes above.
 const EXCLUDED_PATTERNS = [
   /^\/api\/auth\/(login|register|refresh|logout|mfa\/login-verify)$/,
   /^\/api\/admin\/auth\/(login|refresh|logout|mfa\/login-verify)$/,
   /^\/api\/payments\/razorpay\/webhook$/,
+  /^\/api\/newsletter\/subscribe$/,
 ];
 
 export function requireCsrf(req, res, next) {

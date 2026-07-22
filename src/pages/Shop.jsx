@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import SectionDivider from "../components/ui/SectionDivider";
@@ -24,6 +25,12 @@ const DEFAULT_FILTERS = {
 };
 
 export default function Shop() {
+  const [searchParams] = useSearchParams();
+  // Read once on mount — the footer/nav links that set this (?filter=
+  // best-sellers|new-arrivals) are entry points into the page, not a live
+  // filter control the sidebar exposes, so there's no need to re-fetch if
+  // it changes after the initial load.
+  const [filterParam] = useState(() => searchParams.get("filter"));
   const [products, setProducts] = useState([]);
   const [facets, setFacets] = useState(EMPTY_FACETS);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -40,7 +47,7 @@ export default function Shop() {
     setLoading(true);
     setLoadError(false);
 
-    Promise.all([getProducts(), getFacets()])
+    Promise.all([getProducts({ bestSeller: filterParam === "best-sellers" }), getFacets()])
       .then(([productsData, facetsData]) => {
         if (cancelled) return;
         setProducts(productsData);
@@ -57,7 +64,9 @@ export default function Shop() {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // filterParam is seeded once via useState's lazy initializer and never
+    // changes after mount, so listing it here never causes a re-fetch.
+  }, [filterParam]);
 
   // Reset pagination whenever filters/search/sort change so users don't
   // land on an empty "page 3" of a much smaller filtered result set.
@@ -82,6 +91,7 @@ export default function Shop() {
 
   const filteredProducts = useMemo(() => {
     let result = products.filter((p) => {
+      if (filterParam === "new-arrivals" && p.badge !== "New") return false;
       if (filters.categories.length && !filters.categories.includes(p.category)) return false;
       if (filters.collections.length && !filters.collections.includes(p.collection)) return false;
       if (filters.lines.length && !filters.lines.includes(p.line)) return false;
@@ -107,7 +117,7 @@ export default function Shop() {
     }
 
     return result;
-  }, [products, filters, search, sort]);
+  }, [products, filters, search, sort, filterParam]);
 
   const visibleProducts = filteredProducts.slice(0, visibleCount);
   const hasMore = visibleCount < filteredProducts.length;

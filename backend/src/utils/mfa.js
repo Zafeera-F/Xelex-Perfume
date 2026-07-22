@@ -6,7 +6,7 @@
 import { generateSecret, verify, generateURI } from "otplib";
 import QRCode from "qrcode";
 
-const ISSUER = "XeleX Perfumes";
+const ISSUER = "XeleX Perfume";
 
 export function generateMfaSecret() {
   return generateSecret();

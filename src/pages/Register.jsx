@@ -55,7 +55,7 @@ export default function Register() {
       variants={fadeInUp}
       className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-6 py-16"
     >
-      <p className="mb-3 text-center text-xs uppercase tracking-[0.3em] text-gold">XeleX Perfumes</p>
+      <p className="mb-3 text-center text-xs uppercase tracking-[0.3em] text-gold">XeleX Perfume</p>
       <h1 className="text-center font-display text-3xl text-ivory md:text-4xl">Create Account</h1>
       <p className="mt-3 text-center text-sm text-muted">Join us for early access and order tracking.</p>
 

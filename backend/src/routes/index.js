@@ -22,6 +22,8 @@ import adminReviewRoutes from "./adminReview.routes.js";
 import paymentRoutes from "./payment.routes.js";
 import adminDashboardRoutes from "./adminDashboard.routes.js";
 import adminCustomerRoutes from "./adminCustomer.routes.js";
+import newsletterRoutes from "./newsletter.routes.js";
+import adminNewsletterRoutes from "./adminNewsletter.routes.js";
 
 const router = Router();
 
@@ -30,7 +32,7 @@ const router = Router();
 router.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "XeleX Perfumes API Running",
+    message: "XeleX Perfume API Running",
   });
 });
 
@@ -46,5 +48,7 @@ router.use("/api/admin/reviews", adminReviewRoutes);
 router.use("/api/payments/razorpay", paymentRoutes);
 router.use("/api/admin/dashboard", adminDashboardRoutes);
 router.use("/api/admin/customers", adminCustomerRoutes);
+router.use("/api/newsletter", newsletterRoutes);
+router.use("/api/admin/newsletter", adminNewsletterRoutes);
 
 export default router;

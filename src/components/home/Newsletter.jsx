@@ -2,20 +2,27 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Button from "../ui/Button";
 import { fadeInUp, revealViewport } from "../../lib/animations";
+import { subscribeToNewsletter } from "../../lib/newsletter";
 
-/**
- * Newsletter — UI only for now. onSubmit currently just prevents default;
- * wire this to POST /api/newsletter (or similar) once the backend exists.
- */
 export default function Newsletter() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!email) return;
-    // TODO: connect to backend subscription endpoint
-    setSubmitted(true);
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await subscribeToNewsletter(email);
+      setSubmitted(true);
+    } catch (err) {
+      setError(err.message || "Unable to subscribe. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -39,17 +46,22 @@ export default function Newsletter() {
         {submitted ? (
           <p className="mt-8 text-sm text-gold">Thank you — you're on the list.</p>
         ) : (
-          <form onSubmit={handleSubmit} className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className="w-full flex-1 border border-border bg-background px-4 py-3 text-sm text-ivory placeholder:text-muted outline-none transition-colors focus:border-gold"
-            />
-            <Button type="submit" variant="primary">Subscribe</Button>
-          </form>
+          <>
+            {error && <p className="mt-6 text-sm text-error">{error}</p>}
+            <form onSubmit={handleSubmit} className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="w-full flex-1 border border-border bg-background px-4 py-3 text-sm text-ivory placeholder:text-muted outline-none transition-colors focus:border-gold"
+              />
+              <Button type="submit" variant="primary" disabled={isSubmitting}>
+                {isSubmitting ? "Subscribing…" : "Subscribe"}
+              </Button>
+            </form>
+          </>
         )}
       </motion.div>
     </section>

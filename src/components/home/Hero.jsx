@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import Button from "../ui/Button";
 import { fadeInUp, staggerContainer } from "../../lib/animations";
 import { SECTION_IMAGES } from "../../data/placeholderData";
+import { PATHS } from "../../routes/paths";
 
 // Fixed positions/delays for floating particles so they don't reshuffle
 // on every re-render (would look jittery rather than ambient).
@@ -39,7 +41,7 @@ export default function Hero() {
           className="order-2 md:order-1"
         >
           <motion.p variants={fadeInUp} className="mb-4 text-xs uppercase tracking-[0.3em] text-gold">
-            XeleX Perfumes
+            XeleX Perfume
           </motion.p>
           <motion.h1 variants={fadeInUp} className="font-display text-4xl leading-tight text-ivory sm:text-5xl md:text-6xl">
             Luxury Within Reach
@@ -49,7 +51,7 @@ export default function Hero() {
             appreciate elegance.
           </motion.p>
           <motion.div variants={fadeInUp} className="mt-10">
-            <Button variant="primary" size="lg">Shop Now</Button>
+            <Button as={Link} to={PATHS.shop} variant="primary" size="lg">Shop Now</Button>
           </motion.div>
         </motion.div>
 

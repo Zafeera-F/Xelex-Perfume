@@ -112,7 +112,7 @@ export default function Checkout() {
         amount,
         currency,
         order_id: razorpayOrderId,
-        name: "XeleX Perfumes",
+        name: "XeleX Perfume",
         description: "Order payment",
         prefill: {
           name: shippingPayload.fullName,

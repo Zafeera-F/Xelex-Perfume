@@ -18,7 +18,7 @@ export default function About() {
         className="mt-10 text-center"
       >
         <motion.p variants={fadeInUp} className="mb-3 text-xs uppercase tracking-[0.3em] text-gold">
-          XeleX Perfumes
+          XeleX Perfume
         </motion.p>
         <motion.h1 variants={fadeInUp} className="font-display text-4xl text-ivory md:text-5xl">
           About Us

@@ -34,7 +34,7 @@ export default function StorySection() {
           </h2>
           <SectionDivider className="my-8 justify-start" />
           <p className="max-w-md text-base leading-relaxed text-ivory/75">
-            XeleX Perfumes was born from a simple belief — that luxury fragrance
+            XeleX Perfume was born from a simple belief — that luxury fragrance
             shouldn't be reserved for the few. Every scent in our collection is
             composed with the same care and attention as the world's most
             celebrated perfume houses, using quality aromatic oils and lasting

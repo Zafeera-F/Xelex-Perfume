@@ -14,6 +14,7 @@ import Wishlist from "./pages/Wishlist";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import PlaceholderPage from "./components/ui/PlaceholderPage";
 
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminMfaSetup from "./pages/admin/AdminMfaSetup";
@@ -25,6 +26,7 @@ import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
 import AdminCustomerList from "./pages/admin/AdminCustomerList";
 import AdminCustomerDetail from "./pages/admin/AdminCustomerDetail";
 import AdminReviewList from "./pages/admin/AdminReviewList";
+import AdminSubscribers from "./pages/admin/AdminSubscribers";
 
 function App() {
   return (
@@ -35,6 +37,66 @@ function App() {
         <Route path={PATHS.product} element={<ProductDetails />} />
         <Route path={PATHS.about} element={<About />} />
         <Route path={PATHS.contact} element={<Contact />} />
+        <Route
+          path={PATHS.shipping}
+          element={
+            <PlaceholderPage
+              eyebrow="Support"
+              title="Shipping"
+              description="Details on delivery timelines and shipping partners are coming soon."
+            />
+          }
+        />
+        <Route
+          path={PATHS.returns}
+          element={
+            <PlaceholderPage
+              eyebrow="Support"
+              title="Returns"
+              description="Our returns and refund policy is coming soon."
+            />
+          }
+        />
+        <Route
+          path={PATHS.faqs}
+          element={
+            <PlaceholderPage
+              eyebrow="Support"
+              title="FAQs"
+              description="Answers to common questions are coming soon."
+            />
+          }
+        />
+        <Route
+          path={PATHS.trackOrder}
+          element={
+            <PlaceholderPage
+              eyebrow="Company"
+              title="Track Order"
+              description="Order tracking is coming soon — check your account's order history in the meantime."
+            />
+          }
+        />
+        <Route
+          path={PATHS.privacyPolicy}
+          element={
+            <PlaceholderPage
+              eyebrow="Legal"
+              title="Privacy Policy"
+              description="Our privacy policy is coming soon."
+            />
+          }
+        />
+        <Route
+          path={PATHS.termsOfService}
+          element={
+            <PlaceholderPage
+              eyebrow="Legal"
+              title="Terms of Service"
+              description="Our terms of service are coming soon."
+            />
+          }
+        />
         <Route path={PATHS.cart} element={<Cart />} />
         <Route path={PATHS.checkout} element={<Checkout />} />
         <Route path={PATHS.wishlist} element={<Wishlist />} />
@@ -59,6 +121,7 @@ function App() {
         <Route path="customers" element={<AdminCustomerList />} />
         <Route path="customers/:id" element={<AdminCustomerDetail />} />
         <Route path="reviews" element={<AdminReviewList />} />
+        <Route path="subscribers" element={<AdminSubscribers />} />
       </Route>
     </Routes>
   );

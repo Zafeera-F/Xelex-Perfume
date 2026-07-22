@@ -88,7 +88,7 @@ export function emailLayout(previewText, bodyHtml) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>XeleX Perfumes</title>
+    <title>XeleX Perfume</title>
     <style>
       @media (max-width: 600px) {
         .container { width: 100% !important; }
@@ -104,7 +104,7 @@ export function emailLayout(previewText, bodyHtml) {
           <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border:1px solid ${BORDER};">
             <tr>
               <td style="padding:28px 32px;border-bottom:2px solid ${GOLD};text-align:center;">
-                <span style="font-size:20px;letter-spacing:3px;color:${INK};">XELEX PERFUMES</span>
+                <span style="font-size:20px;letter-spacing:3px;color:${INK};">XELEX PERFUME</span>
               </td>
             </tr>
             <tr>
@@ -115,7 +115,7 @@ export function emailLayout(previewText, bodyHtml) {
             <tr>
               <td style="padding:20px 32px;background:${CREAM};border-top:1px solid ${BORDER};text-align:center;">
                 <p style="margin:0;font-size:12px;color:${MUTED};">
-                  XeleX Perfumes · This is an automated message, please don't reply directly to this email.
+                  XeleX Perfume · This is an automated message, please don't reply directly to this email.
                 </p>
               </td>
             </tr>

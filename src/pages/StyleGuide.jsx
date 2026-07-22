@@ -22,7 +22,7 @@ export default function StyleGuide() {
         <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold">Phase 1</p>
         <h1 className="font-display text-4xl text-ivory md:text-5xl">Design System</h1>
         <p className="mt-4 max-w-xl text-sm text-muted">
-          Foundation tokens and reusable components for XeleX Perfumes. Every page built
+          Foundation tokens and reusable components for XeleX Perfume. Every page built
           from here on draws from this palette, type scale, and component set.
         </p>
       </motion.div>

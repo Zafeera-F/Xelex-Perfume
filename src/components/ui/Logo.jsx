@@ -3,7 +3,7 @@
  * wordmark. The emblem doesn't spell out the brand name on its own, so the
  * text stays alongside it for legibility rather than replacing it.
  *
- * `compact` stacks "PERFUMES" under "XELEX" instead of running both on one
+ * `compact` stacks "PERFUME" under "XELEX" instead of running both on one
  * line — for narrow fixed-width contexts (the admin sidebar is only
  * ~208px of usable width) where a single-line lockup would overflow.
  * Stacking guarantees it stays within the width regardless of exact font
@@ -18,7 +18,7 @@ export default function Logo({ className = "", compact = false }) {
         <img src="/logo.png" alt="" className="h-8 w-auto flex-shrink-0" />
         <span className="flex flex-col leading-tight">
           <span className="font-display text-base font-bold tracking-[0.15em] text-gold">XELEX</span>
-          <span className="text-[9px] font-body font-light tracking-[0.2em] text-muted">PERFUMES</span>
+          <span className="text-[9px] font-body font-light tracking-[0.2em] text-muted">PERFUME</span>
         </span>
       </span>
     );
@@ -30,7 +30,7 @@ export default function Logo({ className = "", compact = false }) {
       <span className="font-display text-xl font-bold tracking-[0.2em] text-gold">
         XELEX
         <span className="ml-2 hidden text-[0.55em] font-body font-light tracking-[0.4em] text-muted sm:inline">
-          PERFUMES
+          PERFUME
         </span>
       </span>
     </span>

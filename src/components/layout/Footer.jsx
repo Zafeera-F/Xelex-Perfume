@@ -1,19 +1,33 @@
+import { Link } from "react-router-dom";
 import { InstagramIcon, FacebookIcon, XIcon } from "../ui/SocialIcons";
 import Logo from "../ui/Logo";
 import SectionDivider from "../ui/SectionDivider";
+import { PATHS } from "../../routes/paths";
 
 const FOOTER_LINKS = [
   {
     heading: "Shop",
-    links: ["All Fragrances", "Best Sellers", "New Arrivals"],
+    links: [
+      { label: "All Fragrances", to: PATHS.shop },
+      { label: "Best Sellers", to: `${PATHS.shop}?filter=best-sellers` },
+      { label: "New Arrivals", to: `${PATHS.shop}?filter=new-arrivals` },
+    ],
   },
   {
     heading: "Company",
-    links: ["About Us", "Contact", "Track Order"],
+    links: [
+      { label: "About Us", to: PATHS.about },
+      { label: "Contact", to: PATHS.contact },
+      { label: "Track Order", to: PATHS.trackOrder },
+    ],
   },
   {
     heading: "Support",
-    links: ["Shipping", "Returns", "FAQs"],
+    links: [
+      { label: "Shipping", to: PATHS.shipping },
+      { label: "Returns", to: PATHS.returns },
+      { label: "FAQs", to: PATHS.faqs },
+    ],
   },
 ];
 
@@ -53,14 +67,14 @@ export default function Footer() {
                 {col.heading}
               </h4>
               <ul className="space-y-3">
-                {col.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
+                {col.links.map(({ label, to }) => (
+                  <li key={label}>
+                    <Link
+                      to={to}
                       className="text-sm text-muted transition-colors hover:text-ivory"
                     >
-                      {link}
-                    </a>
+                      {label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -71,9 +85,17 @@ export default function Footer() {
         <SectionDivider className="my-10" />
 
         <div className="flex flex-col items-center justify-between gap-4 text-xs text-muted md:flex-row">
-          <p>© {new Date().getFullYear()} XeleX Perfumes. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} XeleX Perfume. All rights reserved.</p>
           <p>UDYAM-TN-38-0037122 · Tamil Nadu, India</p>
           <p>xelexventure@gmail.com · +91 9843172143</p>
+          <div className="flex items-center gap-4">
+            <Link to={PATHS.privacyPolicy} className="transition-colors hover:text-ivory">
+              Privacy Policy
+            </Link>
+            <Link to={PATHS.termsOfService} className="transition-colors hover:text-ivory">
+              Terms
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
