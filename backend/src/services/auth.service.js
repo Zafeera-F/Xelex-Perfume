@@ -190,16 +190,21 @@ export const authService = {
 
     await phoneOtpRepository.markConsumed(otp.id);
 
-    // The code matched, but this guards the edge case of a code that was
-    // (implausibly) guessed for a phone with no real account — never issue
-    // a session for an account that doesn't exist.
-    const user = await userRepository.findByPhone(phone);
+    // Verifying the code already proves phone ownership — the same bar
+    // every mainstream phone-first signup (Swiggy/Zomato/Myntra, etc.)
+    // uses to justify auto-provisioning. No separate signup form: an
+    // unregistered number just gets an account the moment its code is
+    // verified. fullName starts as a placeholder, email/passwordHash stay
+    // null until the account optionally adds them later (setInitialCredentials).
+    let user = await userRepository.findByPhone(phone);
+    let isNewAccount = false;
     if (!user) {
-      throw new ApiError(401, "Invalid or expired code");
+      user = await userRepository.create({ fullName: "Customer", phone });
+      isNewAccount = true;
     }
 
     const tokens = await issueTokens(user.id);
-    return { user: sanitizeUser(user), ...tokens };
+    return { user: sanitizeUser(user), isNewAccount, ...tokens };
   },
 
   // Enrollment is two steps, matching the industry-standard flow (Google/
@@ -242,6 +247,11 @@ export const authService = {
     const user = await userRepository.findById(userId);
     if (!user) {
       throw new ApiError(404, "User not found");
+    }
+    // bcrypt.compare throws (not a graceful ApiError) against a null hash —
+    // a phone-first account with no password yet can't use this endpoint.
+    if (!user.passwordHash) {
+      throw new ApiError(400, "Set up a password from your Account page first");
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
@@ -321,6 +331,12 @@ export const authService = {
     if (!user) {
       throw new ApiError(404, "User not found");
     }
+    // bcrypt.compare throws (not a graceful ApiError) against a null hash —
+    // a phone-first account with no password yet must use
+    // setInitialCredentials instead, which doesn't require a current one.
+    if (!user.passwordHash) {
+      throw new ApiError(400, "Set up a password from your Account page first");
+    }
 
     const passwordMatches = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!passwordMatches) {
@@ -329,5 +345,32 @@ export const authService = {
 
     const newPasswordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
     await userRepository.updatePassword(userId, newPasswordHash);
+  },
+
+  // For a phone-first account (no email/password yet) adding both for the
+  // first time — deliberately not changePassword, which requires verifying
+  // a current password that doesn't exist yet. Only valid while
+  // passwordHash is still null; once set, changePassword is the right
+  // endpoint for updating it.
+  async setInitialCredentials(userId, { email, password }) {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+    if (user.passwordHash) {
+      throw new ApiError(400, "This account already has a password — use Change Password instead");
+    }
+
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    try {
+      const updated = await userRepository.updateProfile(userId, { email, passwordHash });
+      return sanitizeUser(updated);
+    } catch (err) {
+      if (err.code === "P2002") {
+        throw new ApiError(409, "An account with this email already exists");
+      }
+      throw err;
+    }
   },
 };

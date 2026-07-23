@@ -68,12 +68,12 @@ export const requestPhoneOtp = asyncHandler(async (req, res) => {
 
 export const verifyPhoneOtp = asyncHandler(async (req, res) => {
   const { phone, code } = req.body;
-  const { user, accessToken, refreshToken } = await authService.verifyPhoneOtp(phone, code);
+  const { user, isNewAccount, accessToken, refreshToken } = await authService.verifyPhoneOtp(phone, code);
 
   setAuthCookie(res, accessToken);
   setRefreshCookie(res, refreshToken);
   setCsrfCookie(res, generateCsrfToken());
-  res.status(200).json(new ApiResponse("Logged in successfully", { user }));
+  res.status(200).json(new ApiResponse("Logged in successfully", { user, isNewAccount }));
 });
 
 // No requireAuth — by the time the access token has expired, requireAuth
@@ -110,6 +110,12 @@ export const updateProfile = asyncHandler(async (req, res) => {
   const { fullName, email, phone } = req.body;
   const user = await authService.updateProfile(req.user.id, { fullName, email, phone });
   res.status(200).json(new ApiResponse("Profile updated successfully", { user }));
+});
+
+export const setInitialCredentials = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await authService.setInitialCredentials(req.user.id, { email, password });
+  res.status(200).json(new ApiResponse("Email and password added successfully", { user }));
 });
 
 export const changePassword = asyncHandler(async (req, res) => {

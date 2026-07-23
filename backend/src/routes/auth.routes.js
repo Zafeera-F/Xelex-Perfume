@@ -9,6 +9,7 @@ import {
   logout,
   getProfile,
   updateProfile,
+  setInitialCredentials,
   changePassword,
   setupMfa,
   confirmMfaSetup,
@@ -18,6 +19,7 @@ import {
   registerValidator,
   loginValidator,
   updateProfileValidator,
+  setInitialCredentialsValidator,
   changePasswordValidator,
   mfaCodeValidator,
   disableMfaValidator,
@@ -45,6 +47,9 @@ router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.get("/profile", requireAuth, getProfile);
 router.patch("/profile", requireAuth, updateProfileValidator, validate, updateProfile);
+// Not authLimiter-gated — not a brute-force surface (requireAuth already
+// means a real session), same posture as changePassword below.
+router.post("/credentials", requireAuth, setInitialCredentialsValidator, validate, setInitialCredentials);
 router.patch("/change-password", requireAuth, authLimiter, changePasswordValidator, validate, changePassword);
 router.post("/mfa/setup", requireAuth, setupMfa);
 router.post("/mfa/verify-setup", requireAuth, authLimiter, mfaCodeValidator, validate, confirmMfaSetup);

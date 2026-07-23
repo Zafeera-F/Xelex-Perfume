@@ -301,12 +301,14 @@ export default function Login() {
         )}
       </Card>
 
-      <p className="mt-6 text-center text-sm text-muted">
-        Don't have an account?{" "}
-        <Link to={PATHS.register} className="text-gold hover:text-gold-soft">
-          Create one
-        </Link>
-      </p>
+      {mode === "email" && (
+        <p className="mt-6 text-center text-sm text-muted">
+          Don't have an account?{" "}
+          <Link to={PATHS.register} className="text-gold hover:text-gold-soft">
+            Create one
+          </Link>
+        </p>
+      )}
     </motion.div>
   );
 }

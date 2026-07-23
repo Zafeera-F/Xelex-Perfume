@@ -29,7 +29,8 @@ const STATUS_TONE = {
 };
 
 export default function Profile() {
-  const { user, status, logout, updateProfile, changePassword, setupMfa, confirmMfaSetup, disableMfa } = useAuth();
+  const { user, status, logout, updateProfile, setInitialCredentials, changePassword, setupMfa, confirmMfaSetup, disableMfa } =
+    useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -38,6 +39,16 @@ export default function Profile() {
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Nudge for a phone-first account (no email/password yet) — keyed off
+  // !user.email rather than a persisted dismissal, so it naturally stops
+  // showing once they add one, and "not now" only needs to last this
+  // session (matches the app's existing lightweight posture elsewhere).
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [showCredentialsForm, setShowCredentialsForm] = useState(false);
+  const [credentialsForm, setCredentialsForm] = useState({ email: "", password: "" });
+  const [credentialsError, setCredentialsError] = useState("");
+  const [isSavingCredentials, setIsSavingCredentials] = useState(false);
 
   const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState("");
@@ -72,7 +83,7 @@ export default function Profile() {
   }
 
   function handleStartEditProfile() {
-    setProfileForm({ fullName: user.fullName, email: user.email, phone: user.phone || "" });
+    setProfileForm({ fullName: user.fullName, email: user.email || "", phone: user.phone || "" });
     setProfileError("");
     setProfileSuccess(false);
     setIsEditingProfile(true);
@@ -81,6 +92,25 @@ export default function Profile() {
   function handleCancelEditProfile() {
     setIsEditingProfile(false);
     setProfileError("");
+  }
+
+  function handleCredentialsFieldChange(field) {
+    return (e) => setCredentialsForm({ ...credentialsForm, [field]: e.target.value });
+  }
+
+  async function handleCredentialsSubmit(e) {
+    e.preventDefault();
+    setCredentialsError("");
+    setIsSavingCredentials(true);
+    try {
+      await setInitialCredentials(credentialsForm);
+      setShowCredentialsForm(false);
+      setCredentialsForm({ email: "", password: "" });
+    } catch (err) {
+      setCredentialsError(err.message || "Unable to save. Please try again.");
+    } finally {
+      setIsSavingCredentials(false);
+    }
   }
 
   function handleProfileFieldChange(field) {
@@ -92,7 +122,10 @@ export default function Profile() {
     setProfileError("");
     setIsSavingProfile(true);
     try {
-      await updateProfile({ ...profileForm, phone: profileForm.phone || null });
+      // Blank email is left untouched rather than sent — a phone-first
+      // account with no email yet might only be editing name/phone here;
+      // clearing an already-set email isn't something this form supports.
+      await updateProfile({ ...profileForm, email: profileForm.email || undefined, phone: profileForm.phone || null });
       setIsEditingProfile(false);
       setProfileSuccess(true);
     } catch (err) {
@@ -157,6 +190,69 @@ export default function Profile() {
         </Button>
       </div>
 
+      {!user.email && !nudgeDismissed && (
+        <Card className="mt-10 p-6" hoverable={false}>
+          {showCredentialsForm ? (
+            <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+              <h2 className="font-display text-lg text-ivory">Add Email &amp; Password</h2>
+              <p className="text-sm text-muted">
+                So you can always get back into your account, even without access to this phone number.
+              </p>
+              {credentialsError && (
+                <p className="rounded-[var(--radius-card)] border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+                  {credentialsError}
+                </p>
+              )}
+              <Field label="Email">
+                <Input
+                  required
+                  type="email"
+                  autoComplete="email"
+                  value={credentialsForm.email}
+                  onChange={handleCredentialsFieldChange("email")}
+                  placeholder="you@example.com"
+                />
+              </Field>
+              <Field label="Password">
+                <Input
+                  required
+                  type="password"
+                  autoComplete="new-password"
+                  value={credentialsForm.password}
+                  onChange={handleCredentialsFieldChange("password")}
+                  placeholder="At least 8 characters"
+                />
+              </Field>
+              <div className="flex gap-3">
+                <Button type="submit" variant="primary" disabled={isSavingCredentials}>
+                  {isSavingCredentials ? "Saving…" : "Save"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setShowCredentialsForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display text-lg text-ivory">Add Email &amp; Password</h2>
+                <p className="mt-1 text-sm text-muted">
+                  So you can always get back into your account, even without access to this phone number.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button type="button" variant="primary" size="sm" onClick={() => setShowCredentialsForm(true)}>
+                  Add Now
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setNudgeDismissed(true)}>
+                  Not Now
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
       <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-2">
         <Card className="p-6" hoverable={false}>
           <div className="mb-6 flex items-center justify-between">
@@ -185,7 +281,12 @@ export default function Profile() {
                 <Input required value={profileForm.fullName} onChange={handleProfileFieldChange("fullName")} />
               </Field>
               <Field label="Email">
-                <Input required type="email" value={profileForm.email} onChange={handleProfileFieldChange("email")} />
+                <Input
+                  type="email"
+                  value={profileForm.email}
+                  onChange={handleProfileFieldChange("email")}
+                  placeholder="Add an email address"
+                />
               </Field>
               <Field label="Phone">
                 <Input
@@ -212,7 +313,7 @@ export default function Profile() {
               </div>
               <div>
                 <dt className="text-xs uppercase tracking-[0.15em] text-muted">Email</dt>
-                <dd className="mt-1 text-ivory">{user.email}</dd>
+                <dd className="mt-1 text-ivory">{user.email || "—"}</dd>
               </div>
               <div>
                 <dt className="text-xs uppercase tracking-[0.15em] text-muted">Phone</dt>

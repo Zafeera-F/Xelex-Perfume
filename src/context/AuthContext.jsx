@@ -59,15 +59,18 @@ export function AuthProvider({ children }) {
   }
 
   // Step 2 — verifying the code signs the user in directly, same session
-  // shape as login()/verifyMfaLogin().
+  // shape as login()/verifyMfaLogin(). An unregistered phone number gets an
+  // account created on the spot (see auth.service.js's verifyPhoneOtp) —
+  // isNewAccount lets the caller show a different welcome message for that
+  // case, distinct from a returning user.
   async function verifyPhoneOtp(phone, code) {
-    const { user: loggedInUser } = await apiRequest("/api/auth/otp/verify", {
+    const { user: loggedInUser, isNewAccount } = await apiRequest("/api/auth/otp/verify", {
       method: "POST",
       body: { phone, code },
     });
     setUser(loggedInUser);
     setStatus("authenticated");
-    return loggedInUser;
+    return { user: loggedInUser, isNewAccount };
   }
 
   async function verifyMfaLogin(code) {
@@ -100,6 +103,18 @@ export function AuthProvider({ children }) {
     const { user: updatedUser } = await apiRequest("/api/auth/profile", {
       method: "PATCH",
       body: fields,
+    });
+    setUser(updatedUser);
+    return updatedUser;
+  }
+
+  // For a phone-first account (no email/password yet) adding both for the
+  // first time — distinct from changePassword, which requires a current
+  // password that doesn't exist yet for these accounts.
+  async function setInitialCredentials({ email, password }) {
+    const { user: updatedUser } = await apiRequest("/api/auth/credentials", {
+      method: "POST",
+      body: { email, password },
     });
     setUser(updatedUser);
     return updatedUser;
@@ -139,6 +154,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     updateProfile,
+    setInitialCredentials,
     changePassword,
     setupMfa,
     confirmMfaSetup,

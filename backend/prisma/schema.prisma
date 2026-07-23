@@ -69,8 +69,14 @@ enum CouponDiscountType {
 model User {
   id            String    @id @default(uuid()) @db.Uuid
   fullName      String
-  email         String    @unique
-  passwordHash  String
+  // Nullable — a phone-first account (created by verifying an OTP for an
+  // unregistered number, see auth.service.js's verifyPhoneOtp) has neither
+  // until it optionally adds them later via setInitialCredentials. Same
+  // "Postgres treats each NULL as distinct" reasoning already used for
+  // phone below, so multiple email-less accounts never collide on the
+  // unique constraint.
+  email         String?   @unique
+  passwordHash  String?
   // Unique so a phone number can double as a login identifier alongside
   // email (see auth.service.js's login) — Postgres allows multiple NULLs
   // under a unique constraint, so accounts that never set a phone are

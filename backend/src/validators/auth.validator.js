@@ -63,3 +63,8 @@ export const verifyOtpValidator = [
   body("phone").trim().isMobilePhone("any").withMessage("A valid mobile number is required"),
   body("code").trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage("Enter the 6-digit code sent by SMS"),
 ];
+
+export const setInitialCredentialsValidator = [
+  body("email").trim().isEmail().withMessage("A valid email is required").normalizeEmail(),
+  strongPassword("password"),
+];
