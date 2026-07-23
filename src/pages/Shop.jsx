@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import Breadcrumb from "../components/ui/Breadcrumb";
@@ -12,38 +12,57 @@ import { fadeInUp } from "../lib/animations";
 import { getProducts, getFacets } from "../lib/products";
 
 const PAGE_SIZE = 6;
+const SEARCH_DEBOUNCE_MS = 300;
 
 const EMPTY_FACETS = { categories: [], collections: [], lines: [], priceBounds: { min: 0, max: 0 } };
 
-const DEFAULT_FILTERS = {
-  categories: [],
-  collections: [],
-  lines: [],
-  priceMax: Infinity, // widened until the real price bounds arrive from GET /api/products/facets
-  minRating: 0,
-  inStockOnly: false,
-};
+function parseListParam(value) {
+  return value ? value.split(",").filter(Boolean) : [];
+}
 
 export default function Shop() {
-  const [searchParams] = useSearchParams();
-  // Read once on mount — the footer/nav links that set this (?filter=
-  // best-sellers|new-arrivals) are entry points into the page, not a live
-  // filter control the sidebar exposes, so there's no need to re-fetch if
-  // it changes after the initial load.
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // `filter` is a one-time preset read at mount only — unlike every other
+  // dimension below, it changes what gets *fetched* from the server
+  // (bestSeller: true) or applies a fixed predicate (new-arrivals), so it
+  // isn't part of the ongoing two-way URL sync — it's carried through
+  // unchanged whenever the URL is rewritten below, so a footer link like
+  // ?filter=best-sellers never gets silently dropped once other filters
+  // are touched.
   const [filterParam] = useState(() => searchParams.get("filter"));
+
   const [products, setProducts] = useState([]);
   const [facets, setFacets] = useState(EMPTY_FACETS);
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  // Seeded from ?search=... (the navbar search box lands here), same
-  // one-time-read-on-mount pattern as filterParam above — after that it's
-  // a normal live-editable filter via the toolbar's own search input.
+
+  const [filters, setFilters] = useState(() => ({
+    categories: parseListParam(searchParams.get("category")),
+    collections: parseListParam(searchParams.get("collection")),
+    lines: parseListParam(searchParams.get("line")),
+    // Infinity until either a URL value or the real bounds from
+    // GET /api/products/facets arrive — Infinity is a safe "no cap yet"
+    // sentinel since it can never be less than a real product price.
+    priceMax: Number(searchParams.get("priceMax")) || Infinity,
+    minRating: Number(searchParams.get("minRating")) || 0,
+    inStockOnly: searchParams.get("inStock") === "1",
+  }));
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
-  const [sort, setSort] = useState("featured");
-  const [view, setView] = useState("grid");
+  const [sort, setSort] = useState(() => searchParams.get("sort") || "featured");
+  const [view, setView] = useState(() => searchParams.get("view") || "grid");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+
+  // Debounced separately from `search` itself — typing updates the input
+  // instantly, but the actual filtering (and the URL sync below) only
+  // reacts ~300ms after the user stops typing, so a fast typist doesn't
+  // recompute the list or rewrite the address bar on every keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +74,18 @@ export default function Shop() {
         if (cancelled) return;
         setProducts(productsData);
         setFacets(facetsData);
-        setFilters((prev) => ({ ...prev, priceMax: facetsData.priceBounds.max }));
+        setFilters((prev) => ({
+          ...prev,
+          priceMax: prev.priceMax === Infinity ? facetsData.priceBounds.max : prev.priceMax,
+          // The footer's category links use lowercase, URL-friendly names
+          // (?category=men) — resolve them to the real, exactly-cased
+          // category name once the facet list is known, so both the
+          // filter predicate and the sidebar's checked-checkbox state
+          // (an exact-match .includes() check) work correctly.
+          categories: prev.categories.map(
+            (c) => facetsData.categories.find((fc) => fc.toLowerCase() === c.toLowerCase()) || c
+          ),
+        }));
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -71,11 +101,78 @@ export default function Shop() {
     // changes after mount, so listing it here never causes a re-fetch.
   }, [filterParam]);
 
-  // Reset pagination whenever filters/search/sort change so users don't
-  // land on an empty "page 3" of a much smaller filtered result set.
+  // Reset pagination whenever the applied filters/search/sort change so
+  // users don't land on an empty "page 3" of a much smaller result set.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [filters, search, sort]);
+  }, [filters, debouncedSearch, sort]);
+
+  // Keep the URL in sync with the current filter state (two-way sync, per
+  // request) — `replace`, not `push`, so a filter tweak doesn't create a
+  // new Back-button stop for every checkbox click; only genuine page
+  // navigations (e.g. clicking into a product) do that. Guarded by the ref
+  // below so this never fights with the "read from URL" effect underneath it.
+  const skipNextUrlWriteRef = useRef(false);
+  useEffect(() => {
+    if (skipNextUrlWriteRef.current) {
+      skipNextUrlWriteRef.current = false;
+      return;
+    }
+    const next = new URLSearchParams();
+    if (filterParam) next.set("filter", filterParam);
+    if (filters.categories.length) next.set("category", filters.categories.join(","));
+    if (filters.collections.length) next.set("collection", filters.collections.join(","));
+    if (filters.lines.length) next.set("line", filters.lines.join(","));
+    // Only shown once it's a genuine active filter (moved away from the
+    // catalog's real max) — otherwise every fresh page load would show a
+    // priceMax in the URL the instant facets resolve, even though the user
+    // never touched the slider.
+    if (filters.priceMax !== Infinity && filters.priceMax !== facets.priceBounds.max) {
+      next.set("priceMax", String(filters.priceMax));
+    }
+    if (filters.minRating) next.set("minRating", String(filters.minRating));
+    if (filters.inStockOnly) next.set("inStock", "1");
+    if (debouncedSearch) next.set("search", debouncedSearch);
+    if (sort !== "featured") next.set("sort", sort);
+    if (view !== "grid") next.set("view", view);
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filters.categories,
+    filters.collections,
+    filters.lines,
+    filters.priceMax,
+    filters.minRating,
+    filters.inStockOnly,
+    debouncedSearch,
+    sort,
+    view,
+  ]);
+
+  // React to external URL changes (browser Back/Forward, or a fresh link
+  // like the footer's ?category=men) by re-deriving filter state from the
+  // URL. The ref set here tells the write-effect above to skip its very
+  // next run, so this never bounces straight back into a second rewrite.
+  useEffect(() => {
+    skipNextUrlWriteRef.current = true;
+    setFilters((prev) => ({
+      ...prev,
+      categories: parseListParam(searchParams.get("category")),
+      collections: parseListParam(searchParams.get("collection")),
+      lines: parseListParam(searchParams.get("line")),
+      // Absent from the URL just means "not actively filtered by price" —
+      // keep whatever's already resolved (the facet-derived max, once
+      // known) rather than resetting to the Infinity sentinel, which would
+      // render as a literal "∞" in the sidebar's price display.
+      priceMax: searchParams.has("priceMax") ? Number(searchParams.get("priceMax")) : prev.priceMax,
+      minRating: Number(searchParams.get("minRating")) || 0,
+      inStockOnly: searchParams.get("inStock") === "1",
+    }));
+    setSearch(searchParams.get("search") || "");
+    setSort(searchParams.get("sort") || "featured");
+    setView(searchParams.get("view") || "grid");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function toggleFilter(key, value) {
     setFilters((prev) => {
@@ -88,11 +185,20 @@ export default function Shop() {
   }
 
   function clearFilters() {
-    setFilters({ ...DEFAULT_FILTERS, priceMax: facets.priceBounds.max });
+    setFilters({
+      categories: [],
+      collections: [],
+      lines: [],
+      priceMax: facets.priceBounds.max,
+      minRating: 0,
+      inStockOnly: false,
+    });
     setSearch("");
   }
 
   const filteredProducts = useMemo(() => {
+    const query = debouncedSearch.trim().toLowerCase();
+
     let result = products.filter((p) => {
       if (filterParam === "new-arrivals" && p.badge !== "New") return false;
       if (filters.categories.length && !filters.categories.includes(p.category)) return false;
@@ -101,7 +207,12 @@ export default function Shop() {
       if (p.price > filters.priceMax) return false;
       if (filters.minRating && p.rating < filters.minRating) return false;
       if (filters.inStockOnly && !p.inStock) return false;
-      if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (query) {
+        const matchesName = p.name.toLowerCase().includes(query);
+        const matchesCategory = (p.category || "").toLowerCase().includes(query);
+        const matchesLine = (p.line || "").toLowerCase().includes(query);
+        if (!matchesName && !matchesCategory && !matchesLine) return false;
+      }
       return true;
     });
 
@@ -120,7 +231,7 @@ export default function Shop() {
     }
 
     return result;
-  }, [products, filters, search, sort, filterParam]);
+  }, [products, filters, debouncedSearch, sort, filterParam]);
 
   const visibleProducts = filteredProducts.slice(0, visibleCount);
   const hasMore = visibleCount < filteredProducts.length;

@@ -43,31 +43,31 @@ function App() {
         <Route path={PATHS.about} element={<About />} />
         <Route path={PATHS.contact} element={<Contact />} />
         <Route
-          path={PATHS.shipping}
+          path={PATHS.shippingPolicy}
           element={
             <PlaceholderPage
               eyebrow="Support"
-              title="Shipping"
+              title="Shipping Policy"
               description="Details on delivery timelines and shipping partners are coming soon."
             />
           }
         />
         <Route
-          path={PATHS.returns}
+          path={PATHS.returnPolicy}
           element={
             <PlaceholderPage
               eyebrow="Support"
-              title="Returns"
+              title="Return Policy"
               description="Our returns and refund policy is coming soon."
             />
           }
         />
         <Route
-          path={PATHS.faqs}
+          path={PATHS.faq}
           element={
             <PlaceholderPage
               eyebrow="Support"
-              title="FAQs"
+              title="FAQ"
               description="Answers to common questions are coming soon."
             />
           }
@@ -93,12 +93,12 @@ function App() {
           }
         />
         <Route
-          path={PATHS.termsOfService}
+          path={PATHS.terms}
           element={
             <PlaceholderPage
               eyebrow="Legal"
-              title="Terms of Service"
-              description="Our terms of service are coming soon."
+              title="Terms & Conditions"
+              description="Our terms and conditions are coming soon."
             />
           }
         />

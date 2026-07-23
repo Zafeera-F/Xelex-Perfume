@@ -1,6 +1,5 @@
-import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { Search, X, Heart, ShoppingBag, User } from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { Heart, ShoppingBag, User } from "lucide-react";
 import Logo from "../ui/Logo";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
@@ -25,18 +24,6 @@ export default function Navbar() {
   const { itemCount } = useCart();
   const { status } = useAuth();
   const { count: wishlistCount } = useWishlist();
-  const navigate = useNavigate();
-
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  function handleSearchSubmit(e) {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    navigate(`${PATHS.shop}?search=${encodeURIComponent(searchQuery.trim())}`);
-    setSearchOpen(false);
-    setSearchQuery("");
-  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
@@ -61,32 +48,6 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-5 text-ivory/80">
-          <div className="relative">
-            <button
-              type="button"
-              aria-label={searchOpen ? "Close search" : "Search"}
-              onClick={() => setSearchOpen((open) => !open)}
-              className="transition-colors hover:text-gold"
-            >
-              {searchOpen ? <X size={18} strokeWidth={1.5} /> : <Search size={18} strokeWidth={1.5} />}
-            </button>
-
-            {searchOpen && (
-              <form
-                onSubmit={handleSearchSubmit}
-                className="absolute right-0 top-full mt-3 w-64 border border-border bg-background p-2 shadow-[var(--shadow-card)]"
-              >
-                <input
-                  autoFocus
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search fragrances…"
-                  className="w-full bg-transparent px-2 py-1.5 text-sm text-ivory placeholder:text-muted outline-none"
-                />
-              </form>
-            )}
-          </div>
           <NavLink to={PATHS.wishlist} aria-label="Wishlist" className="relative transition-colors hover:text-gold">
             <Heart size={18} strokeWidth={1.5} />
             {wishlistCount > 0 && (

@@ -34,27 +34,29 @@ export default function ProductToolbar({
       </div>
 
       <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <div className="relative sm:w-64">
-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        <div className="relative w-full sm:w-64">
+          <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
           <Input
+            type="search"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search fragrances..."
-            className="pl-9"
+            aria-label="Search fragrances"
+            className="w-full py-3.5 pl-10 pr-4 text-base sm:py-3 sm:text-sm"
           />
         </div>
 
         <select
           value={sort}
           onChange={(e) => onSortChange(e.target.value)}
-          className="border border-border bg-background-soft px-4 py-3 text-sm text-ivory outline-none transition-colors focus:border-gold"
+          className="w-full border border-border bg-background-soft px-4 py-3 text-sm text-ivory outline-none transition-colors focus:border-gold sm:w-auto"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
 
-        <div className="flex items-center gap-1 border border-border p-1">
+        <div className="flex items-center gap-1 self-start border border-border p-1">
           <button
             aria-label="Grid view"
             onClick={() => onViewChange("grid")}

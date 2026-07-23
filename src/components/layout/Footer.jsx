@@ -24,9 +24,22 @@ const FOOTER_LINKS = [
   {
     heading: "Support",
     links: [
-      { label: "Shipping", to: PATHS.shipping },
-      { label: "Returns", to: PATHS.returns },
-      { label: "FAQs", to: PATHS.faqs },
+      { label: "FAQ", to: PATHS.faq },
+      { label: "Shipping Policy", to: PATHS.shippingPolicy },
+      { label: "Return Policy", to: PATHS.returnPolicy },
+      { label: "Privacy Policy", to: PATHS.privacyPolicy },
+      { label: "Terms & Conditions", to: PATHS.terms },
+    ],
+  },
+  {
+    heading: "Category",
+    // Real category names in the DB today are Men/Unisex/Women (see
+    // GET /api/products/facets) — lowercase in the URL, resolved
+    // case-insensitively against the real facet names by Shop.jsx.
+    links: [
+      { label: "Men", to: `${PATHS.shop}?category=men` },
+      { label: "Women", to: `${PATHS.shop}?category=women` },
+      { label: "Unisex", to: `${PATHS.shop}?category=unisex` },
     ],
   },
 ];
@@ -41,7 +54,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-border bg-background-soft">
       <div className="mx-auto max-w-7xl px-6 py-16 md:px-10">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:grid-cols-5">
           <div>
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
@@ -88,14 +101,6 @@ export default function Footer() {
           <p>© {new Date().getFullYear()} XeleX Perfume. All rights reserved.</p>
           <p>UDYAM-TN-38-0037122 · Tamil Nadu, India</p>
           <p>xelexventure@gmail.com · +91 9843172143</p>
-          <div className="flex items-center gap-4">
-            <Link to={PATHS.privacyPolicy} className="transition-colors hover:text-ivory">
-              Privacy Policy
-            </Link>
-            <Link to={PATHS.termsOfService} className="transition-colors hover:text-ivory">
-              Terms
-            </Link>
-          </div>
         </div>
       </div>
     </footer>
