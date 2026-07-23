@@ -34,7 +34,10 @@ export default function Shop() {
   const [products, setProducts] = useState([]);
   const [facets, setFacets] = useState(EMPTY_FACETS);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [search, setSearch] = useState("");
+  // Seeded from ?search=... (the navbar search box lands here), same
+  // one-time-read-on-mount pattern as filterParam above — after that it's
+  // a normal live-editable filter via the toolbar's own search input.
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [sort, setSort] = useState("featured");
   const [view, setView] = useState("grid");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
