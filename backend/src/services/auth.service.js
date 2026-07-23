@@ -12,6 +12,7 @@ import { generateRefreshToken, hashRefreshToken, REFRESH_TOKEN_EXPIRES_IN_MS } f
 import { generateMfaSecret, verifyMfaCode, generateMfaQrCode } from "../utils/mfa.js";
 import { generateOtp, hashOtp, OTP_EXPIRES_IN_MS, OTP_RESEND_COOLDOWN_MS, MAX_OTP_ATTEMPTS } from "../utils/otp.js";
 import { smsService } from "./sms.service.js";
+import { isSmsConfigured } from "../config/sms.js";
 
 // 12 is the current recommended minimum for bcrypt (10 was the older
 // default) — configurable via env in case infra constraints call for a
@@ -171,6 +172,16 @@ export const authService = {
     const user = await userRepository.findByPhone(phone);
     if (user) {
       smsService.sendOtpSms(phone, code);
+    }
+
+    // MSG91 isn't set up yet, so sendOtpSms is a silent no-op — without this,
+    // the code exists only as a hash in the DB and is genuinely unrecoverable
+    // by anyone, including us. Server-side-only (Render's log dashboard, not
+    // the HTTP response), and self-removing: this stops printing the moment
+    // real MSG91 credentials are configured, so it can't linger as a bypass
+    // once SMS delivery is actually live.
+    if (!isSmsConfigured) {
+      console.log(`[otp] SMS not configured — code for ${phone}: ${code}`);
     }
 
     return { message: "If this number is registered, a verification code has been sent." };

@@ -23,14 +23,15 @@ function parseListParam(value) {
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // `filter` is a one-time preset read at mount only — unlike every other
-  // dimension below, it changes what gets *fetched* from the server
-  // (bestSeller: true) or applies a fixed predicate (new-arrivals), so it
-  // isn't part of the ongoing two-way URL sync — it's carried through
-  // unchanged whenever the URL is rewritten below, so a footer link like
-  // ?filter=best-sellers never gets silently dropped once other filters
-  // are touched.
-  const [filterParam] = useState(() => searchParams.get("filter"));
+  // Derived fresh from the URL on every render (not useState) — Best
+  // Sellers, New Arrivals, and All Fragrances are all the same /shop route,
+  // so clicking between those footer links only changes the query string
+  // without remounting this component. A frozen useState snapshot would
+  // never notice that change; this does. It still isn't part of the
+  // ongoing two-way sync scheme below (it drives *what gets fetched*, not a
+  // toggle-able filter dimension) — the write-effect just echoes whatever
+  // this currently is back into the URL so it's never silently dropped.
+  const filterParam = searchParams.get("filter");
 
   const [products, setProducts] = useState([]);
   const [facets, setFacets] = useState(EMPTY_FACETS);
@@ -97,8 +98,6 @@ export default function Shop() {
     return () => {
       cancelled = true;
     };
-    // filterParam is seeded once via useState's lazy initializer and never
-    // changes after mount, so listing it here never causes a re-fetch.
   }, [filterParam]);
 
   // Reset pagination whenever the applied filters/search/sort change so
@@ -113,6 +112,14 @@ export default function Shop() {
   // navigations (e.g. clicking into a product) do that. Guarded by the ref
   // below so this never fights with the "read from URL" effect underneath it.
   const skipNextUrlWriteRef = useRef(false);
+  // Marks a searchParams change as "we did this to ourselves" (echoing local
+  // filter state into the URL) versus a genuine external navigation (footer
+  // link, Back/Forward). The read-effect below uses this to decide whether
+  // to scroll to top — a sidebar checkbox tweak shouldn't yank scroll
+  // position, but landing on a fresh preset like ?filter=best-sellers from
+  // the footer should, even though both are "just a query-string change" as
+  // far as the router is concerned.
+  const isInternalUrlUpdateRef = useRef(false);
   useEffect(() => {
     if (skipNextUrlWriteRef.current) {
       skipNextUrlWriteRef.current = false;
@@ -135,6 +142,7 @@ export default function Shop() {
     if (debouncedSearch) next.set("search", debouncedSearch);
     if (sort !== "featured") next.set("sort", sort);
     if (view !== "grid") next.set("view", view);
+    isInternalUrlUpdateRef.current = true;
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -154,6 +162,8 @@ export default function Shop() {
   // URL. The ref set here tells the write-effect above to skip its very
   // next run, so this never bounces straight back into a second rewrite.
   useEffect(() => {
+    const isExternalNavigation = !isInternalUrlUpdateRef.current;
+    isInternalUrlUpdateRef.current = false;
     skipNextUrlWriteRef.current = true;
     setFilters((prev) => ({
       ...prev,
@@ -171,6 +181,9 @@ export default function Shop() {
     setSearch(searchParams.get("search") || "");
     setSort(searchParams.get("sort") || "featured");
     setView(searchParams.get("view") || "grid");
+    if (isExternalNavigation) {
+      window.scrollTo(0, 0);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
