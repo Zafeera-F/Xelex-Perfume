@@ -13,6 +13,7 @@ import ShippingPolicy from "./pages/ShippingPolicy";
 import ReturnPolicy from "./pages/ReturnPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TrackOrder from "./pages/TrackOrder";
+import Terms from "./pages/Terms";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Wishlist from "./pages/Wishlist";
@@ -74,16 +75,7 @@ function App() {
           />
           <Route path={PATHS.trackOrder} element={<TrackOrder />} />
           <Route path={PATHS.privacyPolicy} element={<PrivacyPolicy />} />
-          <Route
-            path={PATHS.terms}
-            element={
-              <PlaceholderPage
-                eyebrow="Legal"
-                title="Terms & Conditions"
-                description="Our terms and conditions are coming soon."
-              />
-            }
-          />
+          <Route path={PATHS.terms} element={<Terms />} />
           <Route path={PATHS.cart} element={<Cart />} />
           <Route path={PATHS.checkout} element={<Checkout />} />
           <Route path={PATHS.wishlist} element={<Wishlist />} />
