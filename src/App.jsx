@@ -11,6 +11,7 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import ShippingPolicy from "./pages/ShippingPolicy";
 import ReturnPolicy from "./pages/ReturnPolicy";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Wishlist from "./pages/Wishlist";
@@ -80,16 +81,7 @@ function App() {
               />
             }
           />
-          <Route
-            path={PATHS.privacyPolicy}
-            element={
-              <PlaceholderPage
-                eyebrow="Legal"
-                title="Privacy Policy"
-                description="Our privacy policy is coming soon."
-              />
-            }
-          />
+          <Route path={PATHS.privacyPolicy} element={<PrivacyPolicy />} />
           <Route
             path={PATHS.terms}
             element={
