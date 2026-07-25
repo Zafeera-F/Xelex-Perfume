@@ -55,8 +55,8 @@ function toAdminDetail(product) {
 }
 
 export const adminProductService = {
-  async list({ page = 1, pageSize = 10, search, status } = {}) {
-    const { items, total } = await productRepository.findAllForAdmin({ page, pageSize, search, status });
+  async list({ page = 1, pageSize = 10, search, status, lowStock } = {}) {
+    const { items, total } = await productRepository.findAllForAdmin({ page, pageSize, search, status, lowStock });
     return { items: items.map(toAdminListItem), total, page, pageSize };
   },
 

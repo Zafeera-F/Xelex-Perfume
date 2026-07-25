@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, ImageOff, Eye, EyeOff } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
@@ -17,43 +17,82 @@ const STATUS_OPTIONS = [
 ];
 
 export default function AdminProductList() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("");
-  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
+  const [status, setStatus] = useState(() => searchParams.get("status") || "");
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [lowStock, setLowStock] = useState(() => searchParams.get("lowStock") === "1");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => setPage(1), [status, search]);
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Two-way URL sync, same pattern as Shop.jsx: `isInternalUrlUpdateRef`
+  // marks a searchParams change as self-inflicted (this effect echoing
+  // local state) so the read-effect below doesn't treat it as a fresh
+  // external navigation (dashboard card click, Back/Forward).
+  const skipNextUrlWriteRef = useRef(false);
+  const isInternalUrlUpdateRef = useRef(false);
+  useEffect(() => {
+    if (skipNextUrlWriteRef.current) {
+      skipNextUrlWriteRef.current = false;
+      return;
+    }
+    const next = new URLSearchParams();
+    if (status) next.set("status", status);
+    if (debouncedSearch) next.set("search", debouncedSearch);
+    if (lowStock) next.set("lowStock", "1");
+    if (page !== 1) next.set("page", String(page));
+    isInternalUrlUpdateRef.current = true;
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, debouncedSearch, lowStock, page]);
+
+  // React to external URL changes (a dashboard card link, or Back/Forward) —
+  // replaces whatever filter was active with the one now in the URL.
+  useEffect(() => {
+    if (isInternalUrlUpdateRef.current) {
+      isInternalUrlUpdateRef.current = false;
+      return;
+    }
+    skipNextUrlWriteRef.current = true;
+    setStatus(searchParams.get("status") || "");
+    setSearch(searchParams.get("search") || "");
+    setLowStock(searchParams.get("lowStock") === "1");
+    setPage(Number(searchParams.get("page")) || 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
 
-    // Small debounce on search so every keystroke doesn't fire a request.
-    const t = setTimeout(() => {
-      getAdminProducts({ page, pageSize: 10, search, status })
-        .then((res) => {
-          if (cancelled) return;
-          setProducts(res.items);
-          setTotal(res.total);
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setProducts([]);
-            setTotal(0);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    }, 300);
+    getAdminProducts({ page, pageSize: 10, search: debouncedSearch, status, lowStock })
+      .then((res) => {
+        if (cancelled) return;
+        setProducts(res.items);
+        setTotal(res.total);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProducts([]);
+          setTotal(0);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
       cancelled = true;
-      clearTimeout(t);
     };
-  }, [page, search, status]);
+  }, [page, debouncedSearch, status, lowStock]);
 
   async function handleDelete(product) {
     if (!window.confirm(`Delete "${product.name}"? This can't be undone from here.`)) return;
@@ -80,19 +119,37 @@ export default function AdminProductList() {
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           placeholder="Search by name..."
           className="max-w-xs"
         />
         <select
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
           className="border border-border bg-background-soft px-4 py-3 text-sm text-ivory outline-none transition-colors focus:border-gold"
         >
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
+        <label className="flex items-center gap-2 text-sm text-ivory/80">
+          <input
+            type="checkbox"
+            checked={lowStock}
+            onChange={(e) => {
+              setLowStock(e.target.checked);
+              setPage(1);
+            }}
+            className="h-4 w-4 accent-gold"
+          />
+          Low Stock only
+        </label>
       </div>
 
       <div className="mt-6 overflow-x-auto border border-border">

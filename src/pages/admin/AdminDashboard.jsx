@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ShoppingBag,
   IndianRupee,
@@ -11,16 +12,17 @@ import {
 } from "lucide-react";
 import Card from "../../components/ui/Card";
 import { getDashboardStats } from "../../lib/adminDashboard";
+import { PATHS } from "../../routes/paths";
 
 const STAT_CARDS = [
-  { key: "totalOrders", label: "Total Orders", icon: ShoppingBag, format: "number" },
+  { key: "totalOrders", label: "Total Orders", icon: ShoppingBag, format: "number", to: PATHS.admin.orders },
   { key: "totalRevenue", label: "Total Revenue", icon: IndianRupee, format: "currency" },
-  { key: "totalCustomers", label: "Total Customers", icon: Users, format: "number" },
-  { key: "totalProducts", label: "Total Products", icon: Package, format: "number" },
-  { key: "pendingOrders", label: "Pending Orders", icon: Clock, format: "number" },
-  { key: "deliveredOrders", label: "Delivered Orders", icon: CheckCircle2, format: "number" },
+  { key: "totalCustomers", label: "Total Customers", icon: Users, format: "number", to: PATHS.admin.customers },
+  { key: "totalProducts", label: "Total Products", icon: Package, format: "number", to: PATHS.admin.products },
+  { key: "pendingOrders", label: "Pending Orders", icon: Clock, format: "number", to: `${PATHS.admin.orders}?status=PENDING` },
+  { key: "deliveredOrders", label: "Delivered Orders", icon: CheckCircle2, format: "number", to: `${PATHS.admin.orders}?status=DELIVERED` },
   { key: "failedPayments", label: "Failed Payments", icon: XCircle, format: "number" },
-  { key: "lowStockProducts", label: "Low Stock Products", icon: AlertTriangle, format: "number" },
+  { key: "lowStockProducts", label: "Low Stock Products", icon: AlertTriangle, format: "number", to: `${PATHS.admin.products}?lowStock=1` },
 ];
 
 function formatValue(value, format) {
@@ -28,14 +30,32 @@ function formatValue(value, format) {
   return value.toLocaleString("en-IN");
 }
 
-function StatCard({ label, icon: Icon, value, format }) {
-  return (
-    <Card className="p-6" hoverable={false}>
+function StatCard({ label, icon: Icon, value, format, to }) {
+  const content = (
+    <>
       <div className="flex items-center justify-between">
         <p className="text-xs uppercase tracking-[0.15em] text-muted">{label}</p>
         <Icon size={16} strokeWidth={1.5} className="text-gold" />
       </div>
       <p className="mt-4 font-display text-3xl text-ivory">{formatValue(value, format)}</p>
+    </>
+  );
+
+  if (!to) {
+    return (
+      <Card className="p-6" hoverable={false}>
+        {content}
+      </Card>
+    );
+  }
+
+  return (
+    <Card
+      as={Link}
+      to={to}
+      className="block p-6 cursor-pointer transition-shadow duration-300 hover:shadow-lg hover:shadow-gold/5"
+    >
+      {content}
     </Card>
   );
 }
@@ -85,8 +105,8 @@ export default function AdminDashboard() {
         {loading
           ? STAT_CARDS.map((c) => <StatCardSkeleton key={c.key} />)
           : stats &&
-            STAT_CARDS.map(({ key, label, icon, format }) => (
-              <StatCard key={key} label={label} icon={icon} value={stats[key]} format={format} />
+            STAT_CARDS.map(({ key, label, icon, format, to }) => (
+              <StatCard key={key} label={label} icon={icon} value={stats[key]} format={format} to={to} />
             ))}
       </div>
     </div>

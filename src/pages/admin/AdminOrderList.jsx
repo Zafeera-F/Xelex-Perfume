@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Eye } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import { Input } from "../../components/ui/Input";
@@ -32,43 +32,79 @@ const STATUS_TONE = {
 };
 
 export default function AdminOrderList() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [orders, setOrders] = useState([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("");
-  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
+  const [status, setStatus] = useState(() => searchParams.get("status") || "");
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => setPage(1), [status, search]);
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Two-way URL sync, same pattern as Shop.jsx: `isInternalUrlUpdateRef`
+  // marks a searchParams change as self-inflicted (this effect echoing
+  // local state) so the read-effect below doesn't treat it as a fresh
+  // external navigation (dashboard card click, Back/Forward).
+  const skipNextUrlWriteRef = useRef(false);
+  const isInternalUrlUpdateRef = useRef(false);
+  useEffect(() => {
+    if (skipNextUrlWriteRef.current) {
+      skipNextUrlWriteRef.current = false;
+      return;
+    }
+    const next = new URLSearchParams();
+    if (status) next.set("status", status);
+    if (debouncedSearch) next.set("search", debouncedSearch);
+    if (page !== 1) next.set("page", String(page));
+    isInternalUrlUpdateRef.current = true;
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, debouncedSearch, page]);
+
+  // React to external URL changes (a dashboard card link, or Back/Forward) —
+  // replaces whatever filter was active with the one now in the URL.
+  useEffect(() => {
+    if (isInternalUrlUpdateRef.current) {
+      isInternalUrlUpdateRef.current = false;
+      return;
+    }
+    skipNextUrlWriteRef.current = true;
+    setStatus(searchParams.get("status") || "");
+    setSearch(searchParams.get("search") || "");
+    setPage(Number(searchParams.get("page")) || 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
 
-    // Small debounce on search so every keystroke doesn't fire a request.
-    const t = setTimeout(() => {
-      getAdminOrders({ page, pageSize: 10, status, search })
-        .then((res) => {
-          if (cancelled) return;
-          setOrders(res.items);
-          setTotal(res.total);
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setOrders([]);
-            setTotal(0);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    }, 300);
+    getAdminOrders({ page, pageSize: 10, status, search: debouncedSearch })
+      .then((res) => {
+        if (cancelled) return;
+        setOrders(res.items);
+        setTotal(res.total);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOrders([]);
+          setTotal(0);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
       cancelled = true;
-      clearTimeout(t);
     };
-  }, [page, status, search]);
+  }, [page, status, debouncedSearch]);
 
   return (
     <div>
@@ -77,13 +113,19 @@ export default function AdminOrderList() {
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           placeholder="Search by order ID, name, or phone..."
           className="max-w-xs"
         />
         <select
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
           className="border border-border bg-background-soft px-4 py-3 text-sm text-ivory outline-none transition-colors focus:border-gold"
         >
           {STATUS_OPTIONS.map((opt) => (

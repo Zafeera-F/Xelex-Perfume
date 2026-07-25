@@ -3,10 +3,11 @@
 
 import { apiRequest } from "./api";
 
-export function getAdminProducts({ page = 1, pageSize = 10, search, status } = {}) {
+export function getAdminProducts({ page = 1, pageSize = 10, search, status, lowStock } = {}) {
   const params = new URLSearchParams({ page, pageSize });
   if (search) params.set("search", search);
   if (status) params.set("status", status);
+  if (lowStock) params.set("lowStock", "true");
   return apiRequest(`/api/admin/products?${params.toString()}`);
 }
 

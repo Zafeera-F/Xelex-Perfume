@@ -77,10 +77,19 @@ export const productRepository = {
 
   // --- Admin-facing methods (no visibility filtering) -------------------
 
-  async findAllForAdmin({ page = 1, pageSize = 10, search, status } = {}) {
+  async findAllForAdmin({ page = 1, pageSize = 10, search, status, lowStock } = {}) {
     const where = {
       ...adminStatusFilter(status),
       ...(search && { name: { contains: search, mode: "insensitive" } }),
+      // Same threshold and deletedAt exclusion as countLowStock() below —
+      // "still sellable but running low", not out-of-stock (already
+      // surfaced via status) and not a deleted product (unless the admin
+      // explicitly asked for the Deleted status view, which already set
+      // deletedAt above — don't clobber that).
+      ...(lowStock && {
+        stockQuantity: { gt: 0, lt: 10 },
+        ...(status !== "deleted" && { deletedAt: null }),
+      }),
     };
 
     const [items, total] = await Promise.all([
