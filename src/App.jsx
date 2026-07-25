@@ -9,6 +9,7 @@ import Shop from "./pages/Shop";
 import ProductDetails from "./pages/ProductDetails";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import ShippingPolicy from "./pages/ShippingPolicy";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Wishlist from "./pages/Wishlist";
@@ -56,16 +57,7 @@ function App() {
           <Route path={PATHS.product} element={<ProductDetails />} />
           <Route path={PATHS.about} element={<About />} />
           <Route path={PATHS.contact} element={<Contact />} />
-          <Route
-            path={PATHS.shippingPolicy}
-            element={
-              <PlaceholderPage
-                eyebrow="Support"
-                title="Shipping Policy"
-                description="Details on delivery timelines and shipping partners are coming soon."
-              />
-            }
-          />
+          <Route path={PATHS.shippingPolicy} element={<ShippingPolicy />} />
           <Route
             path={PATHS.returnPolicy}
             element={
