@@ -45,7 +45,7 @@ const FOOTER_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: "Instagram", href: "#", icon: InstagramIcon },
+  { label: "Instagram", href: "https://www.instagram.com/xelex_perfume?igsh=eHBjdW5rNDh2OThn", icon: InstagramIcon },
   { label: "Facebook", href: "#", icon: FacebookIcon },
   { label: "X (Twitter)", href: "#", icon: XIcon },
 ];
@@ -67,6 +67,7 @@ export default function Footer() {
                   href={href}
                   aria-label={label}
                   className="text-muted transition-colors hover:text-gold"
+                  {...(href.startsWith("http") && { target: "_blank", rel: "noopener noreferrer" })}
                 >
                   <Icon size={17} strokeWidth={1.5} />
                 </a>
