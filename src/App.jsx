@@ -12,6 +12,7 @@ import Contact from "./pages/Contact";
 import ShippingPolicy from "./pages/ShippingPolicy";
 import ReturnPolicy from "./pages/ReturnPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TrackOrder from "./pages/TrackOrder";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Wishlist from "./pages/Wishlist";
@@ -71,16 +72,7 @@ function App() {
               />
             }
           />
-          <Route
-            path={PATHS.trackOrder}
-            element={
-              <PlaceholderPage
-                eyebrow="Company"
-                title="Track Order"
-                description="Order tracking is coming soon — check your account's order history in the meantime."
-              />
-            }
-          />
+          <Route path={PATHS.trackOrder} element={<TrackOrder />} />
           <Route path={PATHS.privacyPolicy} element={<PrivacyPolicy />} />
           <Route
             path={PATHS.terms}
