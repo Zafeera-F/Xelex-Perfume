@@ -187,9 +187,11 @@ export default function AdminProductList() {
                           <ImageOff size={16} className="text-muted" />
                         )}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-ivory">{product.name}</p>
-                        <p className="text-xs text-muted">{product.slug}</p>
+                        <p className="truncate text-xs text-muted">
+                          {product.inspiredBy ? `Inspired by ${product.inspiredBy}` : "—"}
+                        </p>
                       </div>
                     </div>
                   </td>
