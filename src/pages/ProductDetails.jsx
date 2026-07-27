@@ -120,7 +120,12 @@ export default function ProductDetails() {
           {product.badge && (
             <Badge tone="gold" className="mb-4">{product.badge}</Badge>
           )}
-          <h1 className="font-display text-3xl text-ivory md:text-4xl">{product.name}</h1>
+          <h1 className="font-display text-3xl text-ivory md:text-4xl">
+            {product.name}
+            {product.inspiredBy && (
+              <span className="ml-2 font-body text-base font-normal text-muted">(Inspired by {product.inspiredBy})</span>
+            )}
+          </h1>
           <p className="mt-2 text-xs uppercase tracking-[0.15em] text-muted">{product.line}</p>
 
           <div className="mt-4 flex items-center gap-2 text-sm">

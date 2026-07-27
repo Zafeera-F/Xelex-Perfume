@@ -17,7 +17,7 @@ import { useWishlist } from "../../context/WishlistContext";
  * has no idea whether that data came from placeholder JS or a real API —
  * swapping the data source later never touches this component.
  */
-export default function ProductCard({ id, name, notes, price, image, badge, inStock = true, className = "" }) {
+export default function ProductCard({ id, name, notes, price, image, badge, inspiredBy, inStock = true, className = "" }) {
   const { addToCart } = useCart();
   const { status } = useAuth();
   const wishlist = useWishlist();
@@ -75,7 +75,10 @@ export default function ProductCard({ id, name, notes, price, image, badge, inSt
 
         <div className="p-5">
           <Link to={PATHS.productLink(id)}>
-            <h3 className="font-display text-lg text-ivory transition-colors hover:text-gold">{name}</h3>
+            <h3 className="font-display text-lg text-ivory transition-colors hover:text-gold">
+              {name}
+              {inspiredBy && <span className="ml-1.5 font-body text-xs font-normal text-muted">(Inspired by {inspiredBy})</span>}
+            </h3>
           </Link>
           {notes && (
             <p className="mt-1 text-xs uppercase tracking-[0.15em] text-muted">{notes}</p>

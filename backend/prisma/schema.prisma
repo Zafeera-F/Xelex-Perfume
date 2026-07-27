@@ -236,6 +236,7 @@ model Product {
   isBestSeller     Boolean   @default(false)
   badge            String?   // e.g. "New", "Limited" — free-text tag shown on ProductCard
   brandLine        String?   // e.g. "XeleX Signature" / "XeleX Rare" / "XeleX Classic"
+  inspiredBy       String?   // e.g. "Chanel No. 5" — shown as "(Inspired by X)" next to the name
   ratingAverage    Decimal   @default(0) @db.Decimal(2, 1)
   ratingCount      Int       @default(0)
   createdAt        DateTime  @default(now())

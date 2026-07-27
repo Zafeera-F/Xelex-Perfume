@@ -25,6 +25,7 @@ const EMPTY_FORM = {
   collectionId: "",
   brandLine: "",
   badge: "",
+  inspiredBy: "",
   isActive: true,
   isFeatured: false,
   isBestSeller: false,
@@ -74,6 +75,7 @@ export default function AdminProductForm() {
           collectionId: product.collectionId || "",
           brandLine: product.brandLine || "",
           badge: product.badge || "",
+          inspiredBy: product.inspiredBy || "",
           isActive: product.isActive,
           isFeatured: product.isFeatured,
           isBestSeller: product.isBestSeller,
@@ -159,6 +161,7 @@ export default function AdminProductForm() {
       collectionId: form.collectionId || undefined,
       brandLine: form.brandLine || undefined,
       badge: form.badge || undefined,
+      inspiredBy: form.inspiredBy || undefined,
       isActive: form.isActive,
       isFeatured: form.isFeatured,
       isBestSeller: form.isBestSeller,
@@ -255,6 +258,10 @@ export default function AdminProductForm() {
                 <Input value={form.badge} onChange={handleField("badge")} placeholder="New, Limited, Best Seller…" />
               </Field>
             </div>
+
+            <Field label="Inspired By (Optional)">
+              <Input value={form.inspiredBy} onChange={handleField("inspiredBy")} placeholder="e.g. Chanel No. 5" />
+            </Field>
           </div>
         </Card>
 

@@ -13,7 +13,7 @@ import { useCart } from "../../context/CartContext";
  * "layout" prop into ProductCard, since the row needs different content
  * density (rating, stock status visible inline) than the compact grid tile.
  */
-export default function ProductListItem({ id, name, notes, price, image, badge, rating, reviews, inStock }) {
+export default function ProductListItem({ id, name, notes, price, image, badge, inspiredBy, rating, reviews, inStock }) {
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
 
@@ -32,7 +32,10 @@ export default function ProductListItem({ id, name, notes, price, image, badge, 
 
       <div className="flex flex-1 flex-col gap-1">
         <Link to={PATHS.productLink(id)}>
-          <h3 className="font-display text-lg text-ivory transition-colors hover:text-gold">{name}</h3>
+          <h3 className="font-display text-lg text-ivory transition-colors hover:text-gold">
+            {name}
+            {inspiredBy && <span className="ml-1.5 font-body text-xs font-normal text-muted">(Inspired by {inspiredBy})</span>}
+          </h3>
         </Link>
         {notes && <p className="text-xs uppercase tracking-[0.15em] text-muted">{notes}</p>}
         <div className="mt-1 flex items-center gap-2 text-xs text-muted">

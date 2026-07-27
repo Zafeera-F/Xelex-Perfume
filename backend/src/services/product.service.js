@@ -28,6 +28,7 @@ export function toListItem(product) {
     notes: SIZE_SUBTITLE,
     image: product.images[0]?.url ?? null,
     badge: product.badge,
+    inspiredBy: product.inspiredBy,
   };
 }
 
